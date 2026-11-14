@@ -9,6 +9,7 @@ Each example declares its check in Cargo.toml:
     reject = ["panicked"]             # log lines that must not appear
     exits = true                      # the program must exit by itself
     shots = [30]                      # frames to save as PNG in target/emu-shots
+    sd_files = { "dir/file.txt" = "contents" }    # files put on the virtual SD card first
     input = ["10-20:a", "touch 30-40:160,120"]   # see tools/emu/run.c
 
 Usage: tools/emu/check.py [example-name ...] [--release] [--no-build]
@@ -53,6 +54,11 @@ def run_example(name, meta, profile):
         cmd += ["--shot", f"{frame}:{ppm}"]
     for key, value in check.get("options", {}).items():
         cmd += ["--option", f"{key}={value}"]
+    sd = ROOT / "target" / "emu-data" / "Azahar" / "sdmc"
+    for rel, content in check.get("sd_files", {}).items():
+        target = sd / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
     cmd.append(str(program))
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     output = proc.stdout + proc.stderr

@@ -27,11 +27,13 @@ extern crate alloc;
 
 pub mod console;
 pub mod font;
+pub mod fs;
 pub mod gfx;
 pub mod info;
 pub mod input;
 pub mod math;
 mod panic_screen;
+pub mod romfs;
 pub mod system;
 
 pub use citronnade_macros::main;
@@ -53,6 +55,8 @@ pub use citronnade_rt::sync;
 pub use citronnade_rt::memory;
 /// The raw service layer (IPC and each system service).
 pub use citronnade_services as services;
+/// File formats: PNG, zlib, RomFS, SMDH, 3DSX.
+pub use citronnade_formats as formats;
 
 pub use citronnade_rt::svc::ResultCode;
 
@@ -91,6 +95,36 @@ pub mod time {
     /// Milliseconds since boot.
     pub fn millis() -> u64 {
         micros() / 1000
+    }
+
+    /// A point in time, for measuring durations (from the system tick).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct Instant(u64);
+
+    impl Instant {
+        pub fn now() -> Instant {
+            Instant(ticks())
+        }
+
+        pub fn elapsed(&self) -> core::time::Duration {
+            Instant::now().duration_since(*self)
+        }
+
+        pub fn duration_since(&self, earlier: Instant) -> core::time::Duration {
+            let t = self.0.saturating_sub(earlier.0) as u128;
+            core::time::Duration::from_nanos((t * 1_000_000_000 / TICKS_PER_SECOND as u128) as u64)
+        }
+
+        pub fn ticks(&self) -> u64 {
+            self.0
+        }
+    }
+
+    impl core::ops::Add<core::time::Duration> for Instant {
+        type Output = Instant;
+        fn add(self, d: core::time::Duration) -> Instant {
+            Instant(self.0 + (d.as_nanos() * TICKS_PER_SECOND as u128 / 1_000_000_000) as u64)
+        }
     }
 
     /// Sleeps the current thread.

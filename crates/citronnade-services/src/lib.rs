@@ -10,6 +10,7 @@ extern crate alloc;
 
 pub mod apt;
 pub mod cfg;
+pub mod fs;
 pub mod gsp;
 pub mod hid;
 pub mod ipc;

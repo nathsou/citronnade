@@ -1,0 +1,22 @@
+[package]
+name = "timing"
+description = "Tick timer, sleep accuracy and frame pacing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.4"
+title = "Timing"
+covers = ["system tick", "Instant", "sleep", "VBlank pacing"]
+
+[package.metadata.citronnade.emulator]
+frames = 260
+input = ["230-234:start"]
+expect = ["timing: tick rate", "sleep 1 ms:", "sleep 16 ms:", "frame interval over 120 frames:", "bye"]
+exits = true
+shots = [200]
+
+[dependencies]
+citronnade.workspace = true

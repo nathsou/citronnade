@@ -75,8 +75,8 @@ emulator's log.
   by the host tool and programs.
 - `cargo-citronnade`: builds, packages each binary as a `.3dsx` with its
   SMDH (title, description, author and icon from
-  `[package.metadata.citronnade]`), and uploads it with the 3dslink
-  protocol.
+  `[package.metadata.citronnade]`) and RomFS (the `romfs` directory named
+  there), and uploads it with the 3dslink protocol.
 
 ## Examples
 
@@ -96,6 +96,10 @@ emulator's log.
 | 11 | [motion](examples/11-motion) | 0.3 | the accelerometer and gyroscope |
 | 12 | [new3ds-inputs](examples/12-new3ds-inputs) | 0.3 | the C-Stick and ZL/ZR (ir:rst) |
 | 13 | [system-info](examples/13-system-info) | 0.3 | model, region, language, power, volume, Wi-Fi, versions, the clock |
+| 14 | [sd-browser](examples/14-sd-browser) | 0.4 | the SD card: directories, reading, writing, appending |
+| 15 | [romfs-assets](examples/15-romfs-assets) | 0.4 | RomFS packed into the 3DSX, PNG decoding on the console |
+| 16 | [threads](examples/16-threads) | 0.4 | threads on both cores, `Mutex`, `Event` |
+| 17 | [timing](examples/17-timing) | 0.4 | the system tick, `Instant`, sleep accuracy, frame pacing |
 
 Build one with `cargo citronnade build -p hello` from the repository root.
 

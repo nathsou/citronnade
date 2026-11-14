@@ -27,6 +27,7 @@ dependencies = [
 name = "citronnade"
 version = "0.1.0"
 dependencies = [
+ "citronnade-formats",
  "citronnade-macros",
  "citronnade-rt",
  "citronnade-services",
@@ -108,6 +109,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "romfs-assets"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "sd-browser"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "stereo-slider"
 version = "0.1.0"
 dependencies = [
@@ -116,6 +131,20 @@ dependencies = [
 
 [[package]]
 name = "system-info"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "threads"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "timing"
 version = "0.1.0"
 dependencies = [
  "citronnade",

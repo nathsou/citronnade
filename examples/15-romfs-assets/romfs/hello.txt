@@ -1,0 +1,2 @@
+Hello from the RomFS!
+These files were packed into the 3DSX by cargo citronnade build.

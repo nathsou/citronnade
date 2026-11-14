@@ -11,3 +11,4 @@ readme = "../../README.md"
 citronnade-rt.workspace = true
 citronnade-macros.workspace = true
 citronnade-services.workspace = true
+citronnade-formats.workspace = true

@@ -1,0 +1,23 @@
+[package]
+name = "threads"
+description = "Worker threads on both cores, synchronised with a mutex and an event"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.4"
+title = "Threads"
+covers = ["threads", "cores", "Mutex", "Event", "APT CPU time limit"]
+
+[package.metadata.citronnade.emulator]
+frames = 260
+input = ["230-234:start"]
+expect = ["threads: system core time limit", "worker 0", "worker 3", "total primes below 200000: 17984", "bye"]
+reject = ["panicked"]
+exits = true
+shots = [60]
+
+[dependencies]
+citronnade.workspace = true

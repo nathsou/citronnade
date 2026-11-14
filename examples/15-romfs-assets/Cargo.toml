@@ -1,0 +1,23 @@
+[package]
+name = "romfs-assets"
+description = "Loads text, CSV and PNG images from the RomFS packed into the 3DSX"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.4"
+title = "RomFS Assets"
+covers = ["RomFS", "PNG decoding", "asset loading"]
+romfs = "romfs"
+
+[package.metadata.citronnade.emulator]
+frames = 150
+input = ["120-124:start"]
+expect = ["mounted RomFS", "data/", "images/", "hello.txt", "Hello from the RomFS!", "sum of squares: 385", "slice.png: 64x64", "badge.png: 32x32", "bye"]
+exits = true
+shots = [90]
+
+[dependencies]
+citronnade.workspace = true

@@ -106,6 +106,12 @@ impl Apt {
         apt::add_hook(hook)
     }
 
+    /// Lets the application use `percent` of the system core's time (5-89;
+    /// needed on Old 3DS before running threads on core 1).
+    pub fn set_app_cpu_time_limit(&self, percent: u32) -> crate::Result<()> {
+        citronnade_services::apt::set_app_cpu_time_limit(percent)
+    }
+
     /// Whether this is a New 3DS or New 2DS.
     pub fn is_new_3ds(&self) -> bool {
         apt::is_new_3ds()
