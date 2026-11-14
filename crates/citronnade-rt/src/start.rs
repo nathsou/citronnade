@@ -85,6 +85,7 @@ unsafe extern "C" {
 }
 
 static RETURN_ADDRESS: AtomicUsize = AtomicUsize::new(0);
+static EXIT_ACTION: AtomicUsize = AtomicUsize::new(0);
 static ORIGINAL_SP: AtomicUsize = AtomicUsize::new(0);
 static EXIT_CODE: AtomicUsize = AtomicUsize::new(0);
 
@@ -109,6 +110,7 @@ unsafe extern "C" fn __citronnade_start(return_address: usize, sp: usize) -> ! {
     let (base, size) = unsafe { heap::init(requested, stack) };
     let stack_top = (base + size) as usize & !7;
 
+    crate::sync::init_arbiter();
     args::init();
     unsafe { run_init_array() };
     unsafe { __citronnade_switch_stack(stack_top, run_main) }
@@ -131,6 +133,22 @@ unsafe fn run_init_array() {
             unsafe { f() };
         }
         p = unsafe { p.add(1) };
+    }
+}
+
+/// Replaces the last step of exiting (returning to the loader or ending
+/// the process) with `action`, which runs on the loader's stack after the
+/// heaps are released and must not return. APT uses this to close the
+/// application through the system.
+pub fn set_exit_action(action: Option<extern "C" fn() -> !>) {
+    EXIT_ACTION.store(action.map_or(0, |f| f as usize), Ordering::Release);
+}
+
+/// Whether exiting returns to the homebrew loader (when one started the
+/// program). APT turns this off after a chainload, which ends the process.
+pub fn set_return_to_loader(enabled: bool) {
+    if !enabled {
+        RETURN_ADDRESS.store(0, Ordering::Release);
     }
 }
 
@@ -183,6 +201,11 @@ unsafe extern "C" fn finish() -> ! {
     // From here on we run on the loader's stack: the heaps can go.
     unsafe { heap::release() };
     env::destroy_handles();
+    let action = EXIT_ACTION.load(Ordering::Acquire);
+    if action != 0 {
+        let action: extern "C" fn() -> ! = unsafe { core::mem::transmute::<usize, extern "C" fn() -> !>(action) };
+        action();
+    }
     let ret = RETURN_ADDRESS.load(Ordering::Relaxed);
     if ret != 0 {
         let code = EXIT_CODE.load(Ordering::Relaxed);

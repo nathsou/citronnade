@@ -1,0 +1,23 @@
+[package]
+name = "colors"
+description = "Fills both screens with cycling colours and tries every framebuffer format"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.2"
+title = "Colors"
+covers = ["Screens", "framebuffer formats", "double buffering", "VBlank"]
+
+[package.metadata.citronnade.emulator]
+frames = 240
+input = ["120-122:a", "160-162:a", "200-204:start"]
+expect = ["colors: A changes", "presented 60 frames", "format: Rgb565", "format: Rgb5A1", "bye: drawing took"]
+reject = ["panicked"]
+exits = true
+shots = [60, 120]
+
+[dependencies]
+citronnade.workspace = true

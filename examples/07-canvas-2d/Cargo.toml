@@ -1,0 +1,23 @@
+[package]
+name = "canvas-2d"
+description = "Software 2D: bouncing sprites with alpha blending and a frame-time graph"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.2"
+title = "Canvas 2D"
+covers = ["Canvas", "Image", "alpha blending", "frame timing"]
+
+[package.metadata.citronnade.emulator]
+frames = 260
+input = ["80-82:a", "120-122:a", "160-162:b", "230-234:start"]
+expect = ["canvas-2d: 24 sprites", "sprites: 32", "sprites: 40", "sprites: 32", "average frame"]
+reject = ["panicked"]
+exits = true
+shots = [70, 200]
+
+[dependencies]
+citronnade.workspace = true

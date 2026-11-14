@@ -34,13 +34,28 @@ A program looks like this:
 #![no_std]
 #![no_main]
 
-use citronnade::log;
+use citronnade::prelude::*;
 
 #[citronnade::main]
-fn main() {
-    log!("Hello from the 3DS!");
+fn main(sys: System) -> Result<()> {
+    let System { apt, gsp, hid, .. } = sys;
+    let mut screens = gsp.screens()?;
+    let mut input = hid.input()?;
+    while apt.main_loop() {
+        if input.scan().down().contains(Buttons::START) {
+            break;
+        }
+        let mut top = screens.top();
+        top.clear(Color::hex(0x204080));
+        top.text(10, 10, "Hello from the 3DS!", Color::WHITE, 2);
+        screens.present();
+    }
+    Ok(())
 }
 ```
+
+Services are owned values: `System` is handed to `main` once, and each part
+is moved out of it.
 
 `log!` writes to the debugger: Luma3DS's GDB stub on hardware, or the
 emulator's log.
@@ -50,8 +65,12 @@ emulator's log.
 - Rust's built-in `armv6k-nintendo-3ds` target, with `core` and `alloc`
   built from source (`-Zbuild-std`) and linked by the `rust-lld` that ships
   with Rust, using Citronnade's own linker script and startup code.
-- `citronnade-rt`: startup, heaps and allocators, system calls, logging,
-  panics and exit.
+- `citronnade-rt`: startup, heaps and allocators, system calls, threads,
+  arbiter-based locks and events, logging, panics and exit.
+- `citronnade-services`: IPC requests and the system services (srv, APT,
+  GSP, HID, ...), following libctru's behaviour.
+- `citronnade`: the API programs use: `System`, `Screens` and `Canvas`,
+  `Input`, `Console`, the panic screen, `math`.
 - `citronnade-formats`: ELF to 3DSX conversion, SMDH, zlib and PNG, shared
   by the host tool and programs.
 - `cargo-citronnade`: builds, packages each binary as a `.3dsx` with its
@@ -66,6 +85,11 @@ emulator's log.
 | 00 | [hello](examples/00-hello) | 0.1 | startup, 3DSX/SMDH, `log!`, arguments, a clean exit |
 | 01 | [panic](examples/01-panic) | 0.1 | the panic handler and exit hooks |
 | 02 | [heap](examples/02-heap) | 0.1 | `alloc` collections, the linear heap, allocation failure |
+| 03 | [colors](examples/03-colors) | 0.2 | both screens, every framebuffer format, double buffering, VBlank |
+| 04 | [console](examples/04-console) | 0.2 | the text console, `println!`, scrolling, the panic screen |
+| 05 | [buttons](examples/05-buttons) | 0.2 | buttons, the Circle Pad, presses and releases |
+| 06 | [lifecycle](examples/06-lifecycle) | 0.2 | HOME, sleep, the power button and exit (APT) |
+| 07 | [canvas-2d](examples/07-canvas-2d) | 0.2 | software 2D: sprites, alpha blending, frame timing |
 
 Build one with `cargo citronnade build -p hello` from the repository root.
 

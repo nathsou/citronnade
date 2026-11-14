@@ -3,6 +3,20 @@
 version = 4
 
 [[package]]
+name = "buttons"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "canvas-2d"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "cargo-citronnade"
 version = "0.1.0"
 dependencies = [
@@ -15,6 +29,7 @@ version = "0.1.0"
 dependencies = [
  "citronnade-macros",
  "citronnade-rt",
+ "citronnade-services",
 ]
 
 [[package]]
@@ -30,6 +45,27 @@ name = "citronnade-rt"
 version = "0.1.0"
 
 [[package]]
+name = "citronnade-services"
+version = "0.1.0"
+dependencies = [
+ "citronnade-rt",
+]
+
+[[package]]
+name = "colors"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "console"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "heap"
 version = "0.1.0"
 dependencies = [
@@ -38,6 +74,13 @@ dependencies = [
 
 [[package]]
 name = "hello"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "lifecycle"
 version = "0.1.0"
 dependencies = [
  "citronnade",

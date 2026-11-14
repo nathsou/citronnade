@@ -16,6 +16,7 @@ citronnade = { path = "crates/citronnade", version = "0.1.0" }
 citronnade-rt = { path = "crates/citronnade-rt", version = "0.1.0" }
 citronnade-macros = { path = "crates/citronnade-macros", version = "0.1.0" }
 citronnade-formats = { path = "crates/citronnade-formats", version = "0.1.0" }
+citronnade-services = { path = "crates/citronnade-services", version = "0.1.0" }
 
 [profile.dev]
 panic = "abort"

@@ -1,0 +1,22 @@
+[package]
+name = "console"
+description = "A text console on the bottom screen; X panics to show the panic screen"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.2"
+title = "Console"
+covers = ["Console", "print!", "scrolling", "panic screen"]
+
+[package.metadata.citronnade.emulator]
+frames = 320
+input = ["150-152:x", "260-264:start"]
+expect = ["Hello from the console!", "line 39", "log lines show up here too", "panicked at", "X was pressed"]
+exits = true
+shots = [120, 200]
+
+[dependencies]
+citronnade.workspace = true

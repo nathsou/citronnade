@@ -15,15 +15,19 @@ pub mod env;
 #[cfg(target_arch = "arm")]
 pub mod log;
 #[cfg(target_arch = "arm")]
+pub mod memory;
+#[cfg(target_arch = "arm")]
 mod panic;
 #[cfg(target_arch = "arm")]
 mod start;
 #[cfg(target_arch = "arm")]
 pub mod svc;
 #[cfg(target_arch = "arm")]
+pub mod thread;
+#[cfg(target_arch = "arm")]
 pub mod tls;
 
 #[cfg(target_arch = "arm")]
 pub use panic::{panicking, set_panic_hook, PanicHook};
 #[cfg(target_arch = "arm")]
-pub use start::{at_exit, exit, DEFAULT_STACK_SIZE};
+pub use start::{at_exit, exit, set_exit_action, set_return_to_loader, DEFAULT_STACK_SIZE};

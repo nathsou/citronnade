@@ -1,0 +1,22 @@
+[package]
+name = "lifecycle"
+description = "Survives HOME, sleep, the power button and exit, logging every lifecycle event"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.2"
+title = "Lifecycle"
+covers = ["APT", "HOME Menu", "sleep", "power button", "exit"]
+
+[package.metadata.citronnade.emulator]
+frames = 240
+input = ["40-42:y", "60-62:x", "200-204:start"]
+expect = ["lifecycle: running", "sleep allowed: false", "HOME allowed: false", "frame 120", "exiting after"]
+exits = true
+shots = [100]
+
+[dependencies]
+citronnade.workspace = true

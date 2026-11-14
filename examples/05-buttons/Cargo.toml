@@ -1,0 +1,22 @@
+[package]
+name = "buttons"
+description = "Shows every button and the Circle Pad live"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.2"
+title = "Buttons"
+covers = ["Input", "Buttons", "Circle Pad"]
+
+[package.metadata.citronnade.emulator]
+frames = 200
+input = ["30-40:a", "50-60:b,y", "70-75:up", "stick 90-100:30000,0", "150-154:start"]
+expect = ["down: [A]", "up: [A]", "down: [B Y]", "down: [UP]", "circle pad: (", "bye"]
+exits = true
+shots = [55, 95]
+
+[dependencies]
+citronnade.workspace = true
