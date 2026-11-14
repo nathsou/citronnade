@@ -116,6 +116,17 @@ impl Apt {
     }
 
     /// Whether this is a New 3DS or New 2DS.
+    /// On a New 3DS, runs the CPU at 804 MHz with the L2 cache (`true`) or
+    /// at the Old 3DS's 268 MHz (`false`). Returns whether it applied (false
+    /// on Old 3DS and 2DS).
+    pub fn set_speedup(&self, enable: bool) -> crate::Result<bool> {
+        if !self.is_new_3ds() {
+            return Ok(false);
+        }
+        citronnade_services::ptm::configure_new3ds_cpu(if enable { 3 } else { 0 })?;
+        Ok(true)
+    }
+
     pub fn is_new_3ds(&self) -> bool {
         apt::is_new_3ds()
     }

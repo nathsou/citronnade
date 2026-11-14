@@ -295,6 +295,14 @@ impl<'a> Canvas<'a> {
         unsafe { core::ptr::copy_nonoverlapping(bytes.as_ptr(), self.ptr.add(self.offset(x, y)), bpp) };
     }
 
+    /// The framebuffer's bytes, for software renderers: `width()` columns of
+    /// 240 pixels, each column stored bottom to top (the screens are mounted
+    /// sideways), in `format()`.
+    pub fn bytes_mut(&mut self) -> &mut [u8] {
+        let len = self.width as usize * 240 * self.format.bytes_per_pixel();
+        unsafe { core::slice::from_raw_parts_mut(self.ptr, len) }
+    }
+
     /// Sets a pixel (ignored outside the canvas).
     pub fn set(&mut self, x: i32, y: i32, c: Color) {
         if x >= 0 && y >= 0 && (x as u32) < self.width && (y as u32) < self.height {
@@ -514,6 +522,61 @@ impl<'a> Canvas<'a> {
                     let bytes = self.format.encode(Color::rgb(r | r >> 5, g | g >> 6, b | b >> 5));
                     self.put(sx, sy, &bytes);
                 }
+            }
+        }
+    }
+
+    /// Copies an RGB888 image (3 bytes per pixel, red first, rows from the
+    /// top) to (x, y), clipped to the canvas, `scale` times larger. Fast
+    /// when the canvas is BGR8 (the screens' default).
+    pub fn draw_rgb888(&mut self, x: i32, y: i32, w: u32, h: u32, scale: u32, pixels: &[u8]) {
+        assert!(pixels.len() >= (w * h * 3) as usize, "image data too short");
+        let scale = scale.max(1);
+        let x0 = x.max(0) as u32;
+        let y0 = y.max(0) as u32;
+        let x1 = ((x + (w * scale) as i32).max(0) as u32).min(self.width);
+        let y1 = ((y + (h * scale) as i32).max(0) as u32).min(self.height);
+        if x0 >= x1 || y0 >= y1 {
+            return;
+        }
+        if self.format == Format::Bgr8 {
+            for sx in x0..x1 {
+                let src_x = (sx as i32 - x) as u32 / scale;
+                // A framebuffer column is a screen column, stored bottom to
+                // top: walk it backwards from the screen row y0.
+                unsafe {
+                    let mut p = self.ptr.add((sx as usize * 240 + 239 - y0 as usize) * 3);
+                    if scale == 1 {
+                        let mut s = pixels.as_ptr().add(3 * (((y0 as i32 - y) as u32 * w + src_x) as usize));
+                        let stride = 3 * w as usize;
+                        for _ in y0..y1 {
+                            *p = *s.add(2);
+                            *p.add(1) = *s.add(1);
+                            *p.add(2) = *s;
+                            p = p.wrapping_sub(3);
+                            s = s.wrapping_add(stride);
+                        }
+                    } else {
+                        for sy in y0..y1 {
+                            let src_y = (sy as i32 - y) as u32 / scale;
+                            let s = pixels.as_ptr().add(3 * (src_y * w + src_x) as usize);
+                            *p = *s.add(2);
+                            *p.add(1) = *s.add(1);
+                            *p.add(2) = *s;
+                            p = p.wrapping_sub(3);
+                        }
+                    }
+                }
+            }
+            return;
+        }
+        for sx in x0..x1 {
+            let src_x = (sx as i32 - x) as u32 / scale;
+            for sy in y0..y1 {
+                let src_y = (sy as i32 - y) as u32 / scale;
+                let i = 3 * (src_y * w + src_x) as usize;
+                let bytes = self.format.encode(Color::rgb(pixels[i], pixels[i + 1], pixels[i + 2]));
+                self.put(sx, sy, &bytes);
             }
         }
     }

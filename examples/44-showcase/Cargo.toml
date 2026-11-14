@@ -1,0 +1,24 @@
+[package]
+name = "showcase"
+description = "Lemon Drop: a small original game with stereoscopic 3D, touch, sound and high scores on the SD card"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "1.0"
+title = "Lemon Drop"
+covers = ["a whole game", "GPU stereo 3D", "touch and Circle Pad", "synthesised sound", "software keyboard", "SD card saves"]
+
+[package.metadata.citronnade.emulator]
+frames = 760
+input = ["30-32:a", "40-42:select", "320-322:select", "740-744:start"]
+expect = ["lemon-drop: ready", "game started", "autopilot on", "caught", "autopilot off", "game over", "high score saved", "bye"]
+reject = ["panicked"]
+exits = true
+shots = [200, 600]
+options = { citra_render_3d = "side-by-side", citra_factor_3d = "100" }
+
+[dependencies]
+citronnade.workspace = true

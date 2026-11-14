@@ -53,7 +53,7 @@ pub use lighting::{DistanceAttenuation, Fresnel, Light, LightEnv, LightLut, LutI
 pub use proctex::{ProcClamp, ProcLut, ProcMap, ProcNoise, ProcShift, ProcTex};
 pub use shader::{Shader, UniformLocation};
 pub use state::*;
-pub use tiling::{Filter, TexFormat, Wrap};
+pub use tiling::{tiled_index, Filter, TexFormat, Wrap};
 
 #[cfg(target_arch = "arm")]
 pub use citronnade_services::ResultCode;

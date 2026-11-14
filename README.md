@@ -4,8 +4,10 @@ A Nintendo 3DS homebrew toolchain and library in Rust, with no dependency on
 devkitPro, a C toolchain or a C library. Builds need only rustup (nightly
 with `rust-src`) and `cargo-citronnade`.
 
-Status: early development. See [PLAN.md](PLAN.md) for the roadmap and the
-versioned examples each release adds.
+Status: every release in [PLAN.md](PLAN.md), up to 1.0, is implemented:
+45 examples, each checked headless in the Azahar emulator. Testing on
+consoles is still to come. [docs/guide.md](docs/guide.md) tours the
+library.
 
 ## Getting started
 
@@ -139,6 +141,7 @@ emulator's log.
 | 41 | [software-keyboard](examples/41-software-keyboard) | 0.9 | text input through the system keyboard |
 | 42 | [error-applet](examples/42-error-applet) | 0.9 | system error messages |
 | 43 | [camera](examples/43-camera) | 0.9 | live preview, the outer cameras as a stereo pair, hardware YUV conversion |
+| 44 | [showcase](examples/44-showcase) | 1.0 | Lemon Drop, a small original game: stereo 3D, touch, sound, high scores on the SD card |
 
 Audio needs the console's DSP firmware, which is not distributed: dump your
 own with the DSP1 homebrew to `/3ds/dspfirm.cdc` on the SD card.

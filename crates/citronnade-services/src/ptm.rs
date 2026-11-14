@@ -41,3 +41,10 @@ pub fn pedometer_counting() -> Result<bool> {
 pub fn total_steps() -> Result<u32> {
     get(0xC)
 }
+
+/// New 3DS only (through ptm:sysm): bit 0 runs the CPU at 804 MHz instead
+/// of 268 MHz, bit 1 enables the L2 cache. 3 is libctru's "speed-up".
+pub fn configure_new3ds_cpu(value: u8) -> Result<()> {
+    let s = srv::get_service("ptm:sysm")?;
+    unsafe { Request::new(0x818).word(value as u32).send(s.raw()) }.map(|_| ())
+}
