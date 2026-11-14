@@ -1,0 +1,9 @@
+[package]
+name = "citronnade-shader"
+description = "An assembler for PICA200 (Nintendo 3DS) vertex and geometry shaders (no_std + alloc)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]

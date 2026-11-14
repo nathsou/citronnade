@@ -14,6 +14,7 @@ pub mod args;
 pub mod env;
 #[cfg(target_arch = "arm")]
 pub mod log;
+pub mod math;
 #[cfg(target_arch = "arm")]
 pub mod memory;
 #[cfg(target_arch = "arm")]

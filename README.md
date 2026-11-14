@@ -70,7 +70,13 @@ emulator's log.
 - `citronnade-services`: IPC requests and the system services (srv, APT,
   GSP, HID, ...), following libctru's behaviour.
 - `citronnade`: the API programs use: `System`, `Screens` and `Canvas`,
-  `Input`, `Console`, the panic screen, `math`.
+  `Input`, `Console`, the panic screen, `math`, `gpu`.
+- `citronnade-gpu`: the PICA200: command lists, GX transfers through GSP,
+  VRAM, render targets, shaders, vertex buffers, textures, texture
+  combiners, blending, depth and stencil (state handling follows citro3d).
+- `citronnade-shader`: an assembler for PICA200 shaders with picasso's
+  syntax, writing SHBIN files; `gpu::shader!` runs it at compile time and
+  reports errors at the shader's line.
 - `citronnade-formats`: ELF to 3DSX conversion, SMDH, zlib and PNG, shared
   by the host tool and programs.
 - `cargo-citronnade`: builds, packages each binary as a `.3dsx` with its
@@ -104,11 +110,21 @@ emulator's log.
 | 19 | [samples](examples/19-samples) | 0.5 | WAV files from the RomFS on several channels, panning, looping |
 | 20 | [touch-synth](examples/20-touch-synth) | 0.5 | polyphony with looping single-cycle waves, latency |
 | 21 | [microphone](examples/21-microphone) | 0.5 | recording from the microphone and playing it back |
+| 22 | [gpu-clear](examples/22-gpu-clear) | 0.6 | render targets in VRAM, memory fills, display transfers |
+| 23 | [triangle](examples/23-triangle) | 0.6 | a vertex shader through `shader!`, vertex buffers, uniforms |
+| 24 | [textured-quad](examples/24-textured-quad) | 0.6 | textures: tiling, orientation, filtering, wrap modes, formats |
+| 25 | [texenv](examples/25-texenv) | 0.6 | texture combiners: multitexturing, interpolation, dot3, alpha test |
+| 26 | [sprites](examples/26-sprites) | 0.6 | thousands of batched sprites, indexed drawing, blending |
+| 27 | [gpu-text](examples/27-gpu-text) | 0.6 | text from a font atlas on both screens |
 
 Audio needs the console's DSP firmware, which is not distributed: dump your
 own with the DSP1 homebrew to `/3ds/dspfirm.cdc` on the SD card.
 
 Build one with `cargo citronnade build -p hello` from the repository root.
+
+Azahar's software renderer, which the headless checks use, ignores texture
+filtering (it always samples the nearest texel), so example 24's linear
+filtering only shows on hardware or with a hardware renderer.
 
 ## Testing
 

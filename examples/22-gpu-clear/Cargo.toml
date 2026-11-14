@@ -1,0 +1,23 @@
+[package]
+name = "gpu-clear"
+description = "Clears GPU render targets with memory fills and shows them with display transfers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.6"
+title = "GPU clear"
+covers = ["Gpu", "RenderTarget", "memory fill", "display transfer", "VRAM"]
+
+[package.metadata.citronnade.emulator]
+frames = 150
+input = ["100-104:start"]
+expect = ["gpu-clear: VRAM free", "readback top ok", "readback bottom ok", "bye: clear"]
+reject = ["panicked", "mismatch"]
+exits = true
+shots = [60]
+
+[dependencies]
+citronnade.workspace = true

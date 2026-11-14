@@ -187,6 +187,13 @@ pub fn wait_for(interrupt: Interrupt, next: bool) {
     }
 }
 
+/// Forgets an interrupt that already happened, so that a following
+/// `wait_for(interrupt, false)` waits for a new one. Call it before starting
+/// the operation that raises the interrupt.
+pub fn clear_interrupt(interrupt: Interrupt) {
+    EVENTS[interrupt as usize].clear();
+}
+
 /// Waits for the top screen's next VBlank.
 pub fn wait_for_vblank() {
     wait_for(Interrupt::VBlank0, true);

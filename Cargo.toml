@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*", "examples/*"]
 # Plain `cargo build` / `cargo test` build the host crates only; the 3DS crates
 # and examples are built with `cargo citronnade build`.
-default-members = ["crates/citronnade-formats", "crates/cargo-citronnade"]
+default-members = ["crates/citronnade-formats", "crates/citronnade-shader", "crates/citronnade-gpu", "crates/citronnade-assets", "crates/cargo-citronnade"]
 
 [workspace.package]
 version = "0.1.0"
@@ -17,6 +17,9 @@ citronnade-rt = { path = "crates/citronnade-rt", version = "0.1.0" }
 citronnade-macros = { path = "crates/citronnade-macros", version = "0.1.0" }
 citronnade-formats = { path = "crates/citronnade-formats", version = "0.1.0" }
 citronnade-services = { path = "crates/citronnade-services", version = "0.1.0" }
+citronnade-shader = { path = "crates/citronnade-shader", version = "0.1.0" }
+citronnade-gpu = { path = "crates/citronnade-gpu", version = "0.1.0" }
+citronnade-assets = { path = "crates/citronnade-assets", version = "0.1.0" }
 
 [profile.dev]
 panic = "abort"

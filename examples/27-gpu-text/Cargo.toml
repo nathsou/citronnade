@@ -1,0 +1,23 @@
+[package]
+name = "gpu-text"
+description = "Text drawn by the GPU from a font atlas, on both screens"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.6"
+title = "GPU text"
+covers = ["font atlas", "A8 textures", "texture combiners for text", "two render targets"]
+
+[package.metadata.citronnade.emulator]
+frames = 100
+input = ["80-84:start"]
+expect = ["gpu-text: atlas", "glyph pixels ok", "bye:"]
+reject = ["panicked", "glyph pixels wrong"]
+exits = true
+shots = [40]
+
+[dependencies]
+citronnade.workspace = true

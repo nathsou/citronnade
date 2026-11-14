@@ -12,3 +12,4 @@ citronnade-rt.workspace = true
 citronnade-macros.workspace = true
 citronnade-services.workspace = true
 citronnade-formats.workspace = true
+citronnade-gpu.workspace = true

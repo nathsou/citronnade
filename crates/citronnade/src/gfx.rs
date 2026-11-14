@@ -784,6 +784,18 @@ impl Screens {
         gsp::wait_for_vblank();
     }
 
+    /// A screen's back buffer: address, width and format.
+    pub(crate) fn back_buffer(&self, screen: Screen, right: bool) -> (*mut u8, u32, Format) {
+        match screen {
+            Screen::Top => {
+                let left = self.top.back().as_ptr();
+                let ptr = if right { self.right_eye(left) } else { left };
+                (ptr, if right { 400 } else { self.top_width() }, self.top.format)
+            }
+            Screen::Bottom => (self.bottom.back().as_ptr(), 320, self.bottom.format),
+        }
+    }
+
     /// The bottom screen's framebuffers, for the panic screen.
     pub(crate) fn bottom_buffers(&self) -> ([usize; 2], Format, usize) {
         ([self.bottom.ptrs[0].as_ptr() as usize, self.bottom.ptrs[1].as_ptr() as usize], self.bottom.format, self.bottom.shown)

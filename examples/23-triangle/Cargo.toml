@@ -1,0 +1,23 @@
+[package]
+name = "triangle"
+description = "A first vertex shader assembled by shader!, a vertex buffer and a projection uniform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.6"
+title = "Triangle"
+covers = ["shader!", "Shader", "vertex buffers", "VertexLayout", "uniforms", "draw_arrays"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["90-94:start"]
+expect = ["triangle: shader has", "centre covered", "corner clear", "bye:"]
+reject = ["panicked", "missing"]
+exits = true
+shots = [30, 60]
+
+[dependencies]
+citronnade.workspace = true

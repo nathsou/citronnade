@@ -28,9 +28,18 @@ name = "citronnade"
 version = "0.1.0"
 dependencies = [
  "citronnade-formats",
+ "citronnade-gpu",
  "citronnade-macros",
  "citronnade-rt",
  "citronnade-services",
+]
+
+[[package]]
+name = "citronnade-assets"
+version = "0.1.0"
+dependencies = [
+ "citronnade-formats",
+ "citronnade-gpu",
 ]
 
 [[package]]
@@ -38,8 +47,20 @@ name = "citronnade-formats"
 version = "0.1.0"
 
 [[package]]
+name = "citronnade-gpu"
+version = "0.1.0"
+dependencies = [
+ "citronnade-rt",
+ "citronnade-services",
+ "citronnade-shader",
+]
+
+[[package]]
 name = "citronnade-macros"
 version = "0.1.0"
+dependencies = [
+ "citronnade-shader",
+]
 
 [[package]]
 name = "citronnade-rt"
@@ -53,6 +74,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "citronnade-shader"
+version = "0.1.0"
+
+[[package]]
 name = "colors"
 version = "0.1.0"
 dependencies = [
@@ -61,6 +86,27 @@ dependencies = [
 
 [[package]]
 name = "console"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "cube"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "gpu-clear"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "gpu-text"
 version = "0.1.0"
 dependencies = [
  "citronnade",
@@ -137,6 +183,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sprites"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "stereo-slider"
 version = "0.1.0"
 dependencies = [
@@ -148,6 +201,21 @@ name = "system-info"
 version = "0.1.0"
 dependencies = [
  "citronnade",
+]
+
+[[package]]
+name = "texenv"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "textured-quad"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+ "citronnade-assets",
 ]
 
 [[package]]
@@ -180,6 +248,13 @@ dependencies = [
 
 [[package]]
 name = "touch-synth"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "triangle"
 version = "0.1.0"
 dependencies = [
  "citronnade",

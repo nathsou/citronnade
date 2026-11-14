@@ -30,6 +30,7 @@ pub mod console;
 pub mod font;
 pub mod fs;
 pub mod gfx;
+pub mod gpu;
 pub mod info;
 pub mod input;
 pub mod math;

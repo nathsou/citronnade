@@ -10,3 +10,4 @@ repository.workspace = true
 proc-macro = true
 
 [dependencies]
+citronnade-shader.workspace = true

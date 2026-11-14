@@ -1,0 +1,11 @@
+[package]
+name = "citronnade-assets"
+description = "Build-script helpers for Citronnade: PNG images to tiled GPU textures"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+citronnade-formats.workspace = true
+citronnade-gpu.workspace = true

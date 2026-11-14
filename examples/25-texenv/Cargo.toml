@@ -1,0 +1,23 @@
+[package]
+name = "texenv"
+description = "Texture combiner showcase: modulation, multitexturing, interpolation, chained stages, dot3 bump mapping, alpha test"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.6"
+title = "Texture combiners"
+covers = ["TexEnv", "multitexturing", "Combine", "constant colour", "alpha test", "texcoord1"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["90-94:start"]
+expect = ["texenv: 6 panels", "panels drawn", "alpha test discards", "bye:"]
+reject = ["panicked", "empty panel", "nothing discarded"]
+exits = true
+shots = [40]
+
+[dependencies]
+citronnade.workspace = true

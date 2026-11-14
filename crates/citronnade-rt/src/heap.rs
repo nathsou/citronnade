@@ -21,7 +21,9 @@ pub use target::*;
 pub const HEAP_AREA_BEGIN: u32 = 0x0800_0000;
 pub const HEAP_AREA_END: u32 = 0x0E00_0000;
 
+#[cfg_attr(not(target_arch = "arm"), allow(dead_code))]
 const HEAP_SPLIT_CAP: u32 = 24 << 20;
+#[cfg_attr(not(target_arch = "arm"), allow(dead_code))]
 const LINEAR_SPLIT_CAP: u32 = 32 << 20;
 
 /// A first-fit allocator over one contiguous region, keeping free blocks in

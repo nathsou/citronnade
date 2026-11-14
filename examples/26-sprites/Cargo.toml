@@ -1,0 +1,23 @@
+[package]
+name = "sprites"
+description = "Thousands of batched, tinted, blended 2D sprites from a generated atlas"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.6"
+title = "Sprites"
+covers = ["draw_elements", "index buffers", "UByte attributes", "sprite atlas", "Blend::ALPHA", "Blend::ADD"]
+
+[package.metadata.citronnade.emulator]
+frames = 170
+input = ["80-82:a", "120-122:l", "150-154:start"]
+expect = ["sprites: atlas", "blending: additive", "sprites: 100", "bye: average frame"]
+reject = ["panicked"]
+exits = true
+shots = [60, 110, 140]
+
+[dependencies]
+citronnade.workspace = true

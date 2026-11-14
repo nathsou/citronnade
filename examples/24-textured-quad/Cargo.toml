@@ -1,0 +1,26 @@
+[package]
+name = "textured-quad"
+description = "Textures: tiling, orientation, nearest and linear filtering, wrap modes and formats"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.6"
+title = "Textured quad"
+covers = ["Texture", "tiling", "Filter", "Wrap", "TexFormat", "texture coordinates"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["90-94:start"]
+expect = ["textured-quad:", "orientation ok", "bye:"]
+reject = ["panicked", "wrong"]
+exits = true
+shots = [40]
+
+[dependencies]
+citronnade.workspace = true
+
+[build-dependencies]
+citronnade-assets.workspace = true
