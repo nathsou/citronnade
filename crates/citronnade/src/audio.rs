@@ -353,6 +353,48 @@ fn var(i: usize, which: usize) -> u32 {
     VARS[i][which].load(Ordering::Acquire)
 }
 
+// The DSP's shared memory is device memory: the ARM11 faults on any
+// unaligned access to it (normal memory allows them), and the DSP places
+// its structures on 2-byte boundaries. Whole-structure reads and writes
+// (which the compiler may turn into word or unaligned word accesses) go 16
+// bits at a time instead.
+
+/// Reads a structure from DSP memory.
+unsafe fn dsp_read<T: Copy>(p: *const T) -> T {
+    const { assert!(core::mem::size_of::<T>() % 2 == 0) };
+    let mut v = core::mem::MaybeUninit::<T>::uninit();
+    let (src, dst) = (p as *const u16, v.as_mut_ptr() as *mut u16);
+    for i in 0..core::mem::size_of::<T>() / 2 {
+        unsafe { dst.add(i).write(src.add(i).read_volatile()) };
+    }
+    unsafe { v.assume_init() }
+}
+
+/// Writes a structure to DSP memory.
+unsafe fn dsp_write<T: Copy>(p: *mut T, v: T) {
+    const { assert!(core::mem::size_of::<T>() % 2 == 0) };
+    let (src, dst) = (&v as *const T as *const u16, p as *mut u16);
+    for i in 0..core::mem::size_of::<T>() / 2 {
+        unsafe { dst.add(i).write_volatile(src.add(i).read()) };
+    }
+}
+
+/// Copies bytes (an even count) into DSP memory at `addr`.
+unsafe fn dsp_copy_in(addr: u32, bytes: &[u8]) {
+    let dst = addr as *mut u16;
+    for (i, pair) in bytes.chunks_exact(2).enumerate() {
+        unsafe { dst.add(i).write_volatile(u16::from_le_bytes([pair[0], pair[1]])) };
+    }
+}
+
+/// Copies bytes (an even count) out of DSP memory at `addr`.
+unsafe fn dsp_copy_out(addr: u32, bytes: &mut [u8]) {
+    let src = addr as *const u16;
+    for (i, pair) in bytes.chunks_exact_mut(2).enumerate() {
+        pair.copy_from_slice(&unsafe { src.add(i).read_volatile() }.to_le_bytes());
+    }
+}
+
 fn set_counter(which: usize, value: u16) {
     unsafe { (var(0, which) as *mut u16).write_volatile(value) };
 }
@@ -418,7 +460,7 @@ fn initialize(resume: bool) -> Result<(), ResultCode> {
     dsp::set_semaphore_mask(0x2000)?;
     if resume {
         if let Some(b) = BACKUP.lock().as_ref() {
-            unsafe { core::ptr::copy_nonoverlapping(b.as_ptr(), var(5, 0) as *mut u8, b.len()) };
+            unsafe { dsp_copy_in(var(5, 0), b) };
         }
     }
     let val: u32 = if resume { 2 } else { 0 };
@@ -465,7 +507,7 @@ fn finalize(suspend: bool) {
     }
     if suspend {
         let mut backup = alloc::vec![0u8; 0x1080];
-        unsafe { core::ptr::copy_nonoverlapping(var(5, 0) as *const u8, backup.as_mut_ptr(), backup.len()) };
+        unsafe { dsp_copy_out(var(5, 0), &mut backup) };
         *BACKUP.lock() = Some(backup);
     }
     let _g = IRQ_LOCK.lock();
@@ -553,7 +595,7 @@ fn update_master() {
         return;
     }
     let mut m = MASTER.lock();
-    let mut st = unsafe { p.read_volatile() };
+    let mut st = unsafe { dsp_read(p) };
     let mut flags = st.flags | 0x1000_0000;
     st.headset = crate::info::headphones() as u16;
     if m.flags & 1 != 0 {
@@ -581,7 +623,7 @@ fn update_master() {
         flags |= 0x8000_0000;
     }
     st.flags = flags;
-    unsafe { p.write_volatile(st) };
+    unsafe { dsp_write(p, st) };
     m.flags = 0;
 }
 
@@ -593,7 +635,7 @@ fn update_channels() {
     for (i, slot) in CHANNEL_STATE.iter().enumerate() {
         let p = unsafe { (var(1, (frame & 1) as usize) as *mut DspChnStruct).add(i) };
         let mut chn = slot.lock();
-        let mut st = unsafe { p.read_volatile() };
+        let mut st = unsafe { dsp_read(p) };
         let mut flags = chn.flags;
         let mut stflags = st.flags;
         if flags & C_INIT != 0 {
@@ -674,14 +716,14 @@ fn update_channels() {
         }
         chn.flags = 0;
         st.flags = stflags;
-        unsafe { p.write_volatile(st) };
+        unsafe { dsp_write(p, st) };
     }
 }
 
 fn read_channel_states() {
     let which = BUFFER_ID.load(Ordering::Acquire) as usize;
     for (i, slot) in CHANNEL_STATE.iter().enumerate() {
-        let st = unsafe { (var(2, which) as *const DspChnStatus).add(i).read_volatile() };
+        let st = unsafe { dsp_read((var(2, which) as *const DspChnStatus).add(i)) };
         let mut chn = slot.lock();
         if chn.sync_count != st.sync_count {
             continue;
