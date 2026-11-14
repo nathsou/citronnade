@@ -497,7 +497,8 @@ pub fn close_handle(handle: Handle) -> Result<(), ResultCode> {
     in1(0x23, handle)
 }
 
-/// Waits for one object to be signalled (svc 0x24). A negative timeout
+/// Waits for one object to be signalled (svc 0x24): `Err(RESULT_TIMEOUT)`
+/// when the timeout passes first. A negative timeout
 /// waits forever.
 pub fn wait_synchronization(handle: Handle, timeout_ns: i64) -> Result<(), ResultCode> {
     let res: u32;
@@ -512,7 +513,16 @@ pub fn wait_synchronization(handle: Handle, timeout_ns: i64) -> Result<(), Resul
             options(nostack)
         );
     }
-    check(res)
+    check_wait(res)
+}
+
+/// The kernel's "timed out" result. It is not an error code (its level is
+/// a status), so the wait wrappers turn it into an `Err` themselves: `Ok`
+/// always means the object was signalled.
+pub const RESULT_TIMEOUT: ResultCode = ResultCode(0x0940_1BFE);
+
+fn check_wait(code: u32) -> Result<(), ResultCode> {
+    if code == RESULT_TIMEOUT.0 { Err(RESULT_TIMEOUT) } else { check(code) }
 }
 
 /// Waits for any (or all) of several objects (svc 0x25). Returns the index
@@ -536,7 +546,7 @@ pub fn wait_synchronization_n(
             options(nostack)
         );
     }
-    check(res).map(|_| index as usize)
+    check_wait(res).map(|_| index as usize)
 }
 
 /// Duplicates a handle (svc 0x27).

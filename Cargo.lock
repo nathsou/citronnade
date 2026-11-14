@@ -10,6 +10,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "camera"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "canvas-2d"
 version = "0.1.0"
 dependencies = [
@@ -93,6 +100,13 @@ dependencies = [
 
 [[package]]
 name = "cube"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "error-applet"
 version = "0.1.0"
 dependencies = [
  "citronnade",
@@ -234,6 +248,13 @@ dependencies = [
 
 [[package]]
 name = "sockets"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "software-keyboard"
 version = "0.1.0"
 dependencies = [
  "citronnade",

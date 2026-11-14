@@ -25,7 +25,9 @@
 
 extern crate alloc;
 
+pub mod applets;
 pub mod audio;
+pub mod camera;
 pub mod console;
 pub mod font;
 pub mod fs;

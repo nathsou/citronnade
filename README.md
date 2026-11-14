@@ -70,7 +70,9 @@ emulator's log.
 - `citronnade-services`: IPC requests and the system services (srv, APT,
   GSP, HID, ...), following libctru's behaviour.
 - `citronnade`: the API programs use: `System`, `Screens` and `Canvas`,
-  `Input`, `Console`, the panic screen, `math`, `gpu`.
+  `Input`, `Console`, the panic screen, `math`, `gpu`, `audio`, `fs` and
+  `romfs`, `net`, `applets` (software keyboard, error display) and
+  `camera`.
 - `citronnade-gpu`: the PICA200: command lists, GX transfers through GSP,
   VRAM, render targets (also as textures), vertex and geometry shaders,
   vertex buffers, textures, texture combiners, fragment lighting, fog, the
@@ -134,6 +136,9 @@ emulator's log.
 | 38 | [sockets](examples/38-sockets) | 0.8 | TCP echo and UDP with a PC, non-blocking sockets, broadcast |
 | 39 | [stdio](examples/39-stdio) | 0.8 | printing to the PC's terminal; the basis of `cargo citronnade test` |
 | 40 | [http](examples/40-http) | 0.8 | HTTP GET and POST through the system, a JSON response |
+| 41 | [software-keyboard](examples/41-software-keyboard) | 0.9 | text input through the system keyboard |
+| 42 | [error-applet](examples/42-error-applet) | 0.9 | system error messages |
+| 43 | [camera](examples/43-camera) | 0.9 | live preview, the outer cameras as a stereo pair, hardware YUV conversion |
 
 Audio needs the console's DSP firmware, which is not distributed: dump your
 own with the DSP1 homebrew to `/3ds/dspfirm.cdc` on the SD card.

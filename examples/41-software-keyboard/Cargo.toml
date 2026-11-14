@@ -1,0 +1,23 @@
+[package]
+name = "software-keyboard"
+description = "Text input through the system's software keyboard: text, numbers, passwords, several lines"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.9"
+title = "Software keyboard"
+covers = ["applets::Keyboard", "library applets", "APT suspend and restore"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["30-32:a", "100-104:start"]
+expect = ["software-keyboard:", "name: confirmed", "screens back", "bye"]
+reject = ["panicked"]
+exits = true
+shots = [80]
+
+[dependencies]
+citronnade.workspace = true

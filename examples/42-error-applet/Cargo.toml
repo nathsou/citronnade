@@ -1,0 +1,23 @@
+[package]
+name = "error-applet"
+description = "System error messages through the error display applet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.9"
+title = "Error applet"
+covers = ["applets::ErrorDisplay", "library applets"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["30-32:a", "60-62:b", "100-104:start"]
+expect = ["error-applet:", "text error closed", "code error closed", "bye"]
+reject = ["panicked"]
+exits = true
+shots = [90]
+
+[dependencies]
+citronnade.workspace = true

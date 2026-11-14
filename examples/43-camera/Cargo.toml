@@ -1,0 +1,23 @@
+[package]
+name = "camera"
+description = "Live camera preview: the inner camera, the outer pair as a stereo image, and hardware YUV conversion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.9"
+title = "Camera"
+covers = ["camera::Cameras", "cam:u", "camera::Y2r", "y2r:u", "stereo pairs", "Canvas::draw_rgb565"]
+
+[package.metadata.citronnade.emulator]
+frames = 150
+input = ["70-72:a", "130-134:start"]
+expect = ["camera: y2r self-test ok", "camera: outer stereo pair", "frames arriving", "camera: inner", "bye"]
+reject = ["panicked", "self-test failed", "no frames"]
+exits = true
+shots = [60]
+
+[dependencies]
+citronnade.workspace = true

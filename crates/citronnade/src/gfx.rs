@@ -491,6 +491,33 @@ impl<'a> Canvas<'a> {
         }
     }
 
+    /// Copies an RGB565 image (rows from the top, as the cameras send them)
+    /// to (x, y), clipped to the canvas. Fast when the canvas is RGB565.
+    pub fn draw_rgb565(&mut self, x: i32, y: i32, w: u32, h: u32, pixels: &[u8]) {
+        assert!(pixels.len() >= (w * h * 2) as usize, "image data too short");
+        let x0 = x.max(0) as u32;
+        let y0 = y.max(0) as u32;
+        let x1 = ((x + w as i32).max(0) as u32).min(self.width);
+        let y1 = ((y + h as i32).max(0) as u32).min(self.height);
+        for sx in x0..x1 {
+            let src_x = (sx as i32 - x) as u32;
+            for sy in y0..y1 {
+                let src_y = (sy as i32 - y) as u32;
+                let i = 2 * (src_y * w + src_x) as usize;
+                let v = u16::from_le_bytes([pixels[i], pixels[i + 1]]);
+                if self.format == Format::Rgb565 {
+                    unsafe { (self.ptr.add(self.offset(sx, sy)) as *mut u16).write_unaligned(v) };
+                } else {
+                    let r = ((v >> 11) as u8) << 3;
+                    let g = (((v >> 5) & 0x3F) as u8) << 2;
+                    let b = ((v & 0x1F) as u8) << 3;
+                    let bytes = self.format.encode(Color::rgb(r | r >> 5, g | g >> 6, b | b >> 5));
+                    self.put(sx, sy, &bytes);
+                }
+            }
+        }
+    }
+
     /// Draws text with the built-in font, `scale` times larger. Returns the
     /// x after the last character. `\n` starts a new line.
     pub fn text(&mut self, x: i32, y: i32, s: &str, c: Color, scale: u32) -> i32 {
