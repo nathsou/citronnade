@@ -788,10 +788,20 @@ impl Assembler {
             "emit" => self.emit(EMIT << 26, None, line),
             "break" => self.emit(BREAK << 26, None, line),
             "setemit" => {
-                let vtx: u32 = args.first().and_then(|a| a.parse().ok()).ok_or_else(|| Error { line, message: "setemit needs a vertex id".into() })?;
-                let prim = args.iter().skip(1).any(|a| a.eq_ignore_ascii_case("prim"));
-                let inv = args.iter().skip(1).any(|a| a.eq_ignore_ascii_case("inv"));
-                self.emit((SETEMIT << 26) | ((inv as u32) << 22) | ((prim as u32) << 23) | ((vtx & 3) << 24), None, line);
+                let vtx: u32 = args.first().and_then(|a| a.trim().parse().ok()).ok_or_else(|| Error { line, message: "setemit needs a vertex id (0-2)".into() })?;
+                if vtx > 2 {
+                    return err(line, "setemit's vertex id is 0, 1 or 2");
+                }
+                let (mut prim, mut inv) = (false, false);
+                for word in args.iter().skip(1).flat_map(|a| a.split_whitespace()) {
+                    match word.to_ascii_lowercase().as_str() {
+                        "prim" | "primitive" => prim = true,
+                        "inv" | "invert" => inv = true,
+                        w => return err(line, format!("unknown setemit flag `{w}` (prim, inv)")),
+                    }
+                }
+                self.kind = ShaderKind::Geometry;
+                self.emit((SETEMIT << 26) | ((inv as u32) << 22) | ((prim as u32) << 23) | (vtx << 24), None, line);
             }
             "mad" => self.mad(line, &args)?,
             "mova" => {
@@ -1079,14 +1089,38 @@ impl Assembler {
             }
             "entry" => self.entry_name = rest.trim().to_string(),
             "gsh" => {
-                // .gsh point cN  (point mode, vertex data in float uniforms from cN)
+                // .gsh point cN | .gsh variable cN count | .gsh fixed cN cArray count
                 let parts: Vec<&str> = rest.split_whitespace().collect();
-                if parts.first().map(|s| s.eq_ignore_ascii_case("point")) != Some(true) {
-                    return err(line, "only `.gsh point cN` is supported");
+                let reg = |t: Option<&&str>| -> Result<u8, Error> {
+                    t.and_then(|r| r.strip_prefix('c').or_else(|| r.strip_prefix('C')))
+                        .and_then(|n| n.parse::<u8>().ok())
+                        .filter(|&n| n < 96)
+                        .ok_or_else(|| Error { line, message: "expected a float uniform register (c0-c95)".into() })
+                };
+                let count = |t: Option<&&str>| -> Result<u8, Error> {
+                    t.and_then(|n| n.parse::<u8>().ok()).ok_or_else(|| Error { line, message: "expected a vertex count".into() })
+                };
+                if !self.uniforms.is_empty() || !self.constants.is_empty() || !self.outputs.is_empty() {
+                    return err(line, ".gsh must come before uniforms, constants and outputs");
                 }
-                let first = parts.get(1).and_then(|r| r.strip_prefix('c')).and_then(|n| n.parse::<u8>().ok()).unwrap_or(0);
+                let mode = match parts.first().map(|s| s.to_ascii_lowercase()) {
+                    Some(m) if m == "point" => GeometryMode { mode: 0, fixed_start: 0, variable_count: 0, fixed_count: 0 },
+                    Some(m) if m == "variable" || m == "subdivision" => {
+                        GeometryMode { mode: 1, fixed_start: 0, variable_count: count(parts.get(2))?, fixed_count: 0 }
+                    }
+                    Some(m) if m == "fixed" || m == "particle" => {
+                        let start = reg(parts.get(2))?;
+                        GeometryMode { mode: 2, fixed_start: start, variable_count: 0, fixed_count: count(parts.get(3))? }
+                    }
+                    None => GeometryMode { mode: 0, fixed_start: 0, variable_count: 0, fixed_count: 0 },
+                    Some(m) => return err(line, format!("unknown geometry shader mode `{m}` (point, variable, fixed)")),
+                };
+                if !parts.is_empty() {
+                    // Uniforms are allocated from the given register on.
+                    self.next_float = reg(parts.get(1))? as u32;
+                }
                 self.kind = ShaderKind::Geometry;
-                self.geometry = Some(GeometryMode { mode: 0, fixed_start: first, variable_count: 0, fixed_count: 0 });
+                self.geometry = Some(mode);
             }
             "nodvle" | "setf" | "seti" | "setb" => {}
             _ => return err(line, format!("unknown directive `.{name}`")),
@@ -1095,6 +1129,9 @@ impl Assembler {
     }
 
     fn finish(mut self) -> Result<Program, Error> {
+        if self.kind == ShaderKind::Geometry && self.geometry.is_none() {
+            self.geometry = Some(GeometryMode { mode: 0, fixed_start: 0, variable_count: 0, fixed_count: 0 });
+        }
         if let Some(b) = self.blocks.last() {
             return err(self.code.last().map_or(0, |p| p.line), format!("unclosed block (started at instruction {})", b.start));
         }
@@ -1376,6 +1413,39 @@ mod tests {
         let e = assemble(".proc main\nadd r0, c0, c1\nend\n.end").unwrap_err();
         assert!(e.message.contains("only one operand"));
         assert!(assemble(".proc other\nend\n.end").is_err(), "needs main");
+    }
+
+    #[test]
+    fn geometry_shaders() {
+        let src = r#"
+            .gsh point c0
+            .fvec projection[4]
+            .out outpos position
+            .alias inpos v0
+            .proc main
+                setemit 0
+                call corner
+                setemit 1
+                call corner
+                setemit 2, prim inv
+                call corner
+                end
+            .end
+            .proc corner
+                dp4 outpos.x, projection[0], inpos
+                emit
+            .end
+        "#;
+        let p = assemble(src).unwrap();
+        assert_eq!(p.kind, ShaderKind::Geometry);
+        assert_eq!(p.geometry.unwrap().mode, 0);
+        assert_eq!(p.code[0], (0x2B << 26));
+        assert_eq!(p.code[4], (0x2B << 26) | 2 << 24 | 1 << 23 | 1 << 22);
+        assert_eq!(p.code[1] >> 26, 0x24);
+        assert!(assemble(".proc main\nsetemit 3\nend\n.end").is_err());
+        let fixed = assemble(".gsh fixed c48 c0 4\n.fvec m\n.proc main\nend\n.end").unwrap();
+        assert_eq!(fixed.geometry, Some(GeometryMode { mode: 2, fixed_start: 0, variable_count: 0, fixed_count: 4 }));
+        assert_eq!(fixed.uniform("m").unwrap().first, 48);
     }
 
     #[test]

@@ -1,0 +1,23 @@
+[package]
+name = "procedural-texture"
+description = "The procedural texture unit: rings, marble, stripes, bricks, a glow and animated clouds without texture memory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Procedural texture"
+covers = ["ProcTex", "ProcMap", "ProcLut", "noise", "Source::Texture3"]
+
+[package.metadata.citronnade.emulator]
+frames = 100
+input = ["80-84:start"]
+expect = ["procedural-texture:", "panels drawn", "patterns vary", "bye:"]
+reject = ["panicked", "empty panel", "flat pattern"]
+exits = true
+shots = [40]
+
+[dependencies]
+citronnade.workspace = true

@@ -1,0 +1,23 @@
+[package]
+name = "render-to-texture"
+description = "An offscreen render target used as a texture: a live minimap on the bottom screen"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Render to texture"
+covers = ["bind_target_texture", "Mat4::ortho", "offscreen targets", "several targets per frame"]
+
+[package.metadata.citronnade.emulator]
+frames = 110
+input = ["stick 50-80:0,30000", "90-94:start"]
+expect = ["render-to-texture:", "minimap orientation ok", "bye:"]
+reject = ["panicked", "minimap orientation wrong"]
+exits = true
+shots = [40, 85]
+
+[dependencies]
+citronnade.workspace = true

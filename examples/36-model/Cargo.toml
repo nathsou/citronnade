@@ -1,0 +1,27 @@
+[package]
+name = "model"
+description = "An original model converted from OBJ at build time, loaded from the RomFS and lit per pixel"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Model"
+covers = ["citronnade-assets::build_mesh", "Mesh", "RomFS", "submeshes", "materials"]
+romfs = "romfs"
+
+[package.metadata.citronnade.emulator]
+frames = 110
+input = ["stick 60-80:30000,0", "90-94:start"]
+expect = ["model: 3 submeshes", "lemon drawn", "leaf drawn", "bye:"]
+reject = ["panicked", "missing"]
+exits = true
+shots = [40, 85]
+
+[dependencies]
+citronnade.workspace = true
+
+[build-dependencies]
+citronnade-assets.workspace = true

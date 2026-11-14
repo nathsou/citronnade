@@ -4,9 +4,10 @@ use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use citronnade_services::apt;
-use citronnade_shader::UniformKind;
+use citronnade_shader::{ShaderKind, UniformKind};
 
 use crate::cmd::CommandList;
+use crate::lighting::{LightEnv, LightingWords};
 use crate::linear::LinearBuffer;
 use crate::math::Mat4;
 use crate::regs;
@@ -94,7 +95,9 @@ const TEXTURES: u32 = 1 << 7;
 const TEXENV_BUFFER: u32 = 1 << 8;
 const TEXENV: u32 = 1 << 9;
 const LIGHTING: u32 = 1 << 10;
-const ALL: u32 = (1 << 11) - 1;
+const FOG: u32 = 1 << 11;
+const PROCTEX: u32 = 1 << 12;
+const ALL: u32 = (1 << 13) - 1;
 
 /// Where buffer offsets are counted from (the start of VRAM; linear memory
 /// is above it).
@@ -111,7 +114,8 @@ struct FbState {
     depth_mask: u32,
 }
 
-struct ProgramState {
+/// One stage's code and output map.
+struct StageCode {
     id: u32,
     code: Vec<u32>,
     opdescs: Vec<u32>,
@@ -120,6 +124,121 @@ struct ProgramState {
     outmap_mask: u32,
     outmap_mode: u32,
     outmap_clock: u32,
+    merge: bool,
+    geometry: Option<citronnade_shader::GeometryMode>,
+}
+
+impl StageCode {
+    fn of(shader: &Shader) -> StageCode {
+        let p = &shader.program;
+        StageCode {
+            id: shader.id,
+            code: p.code.clone(),
+            opdescs: p.opdescs.clone(),
+            entry: p.entry,
+            outmap: shader.outmap,
+            outmap_mask: shader.outmap_mask,
+            outmap_mode: shader.outmap_mode,
+            outmap_clock: shader.outmap_clock,
+            merge: p.outputs.iter().any(|o| o.kind == citronnade_shader::OutputKind::Dummy),
+            geometry: p.geometry,
+        }
+    }
+}
+
+struct ProgramState {
+    vertex: StageCode,
+    geometry: Option<StageCode>,
+}
+
+/// A shader stage's uniforms as last set, and which need sending.
+struct Uniforms {
+    floats: [[f32; 4]; 96],
+    float_dirty: u128,
+    float_set: u128,
+    ints: [u32; 4],
+    int_dirty: u8,
+    bools: u16,
+    bool_dirty: bool,
+}
+
+impl Uniforms {
+    const fn new() -> Uniforms {
+        Uniforms { floats: [[0.0; 4]; 96], float_dirty: 0, float_set: 0, ints: [0; 4], int_dirty: 0, bools: 0, bool_dirty: false }
+    }
+
+    fn dirty_all(&mut self) {
+        self.float_dirty = self.float_set;
+        self.int_dirty = 0xF;
+        self.bool_dirty = true;
+    }
+
+    fn set_float(&mut self, reg: u8, v: [f32; 4]) {
+        if reg < 96 {
+            self.floats[reg as usize] = v;
+            self.float_dirty |= 1 << reg;
+            self.float_set |= 1 << reg;
+        }
+    }
+
+    fn set_int(&mut self, reg: u8, v: [u8; 4]) {
+        if reg < 4 {
+            self.ints[reg as usize] = u32::from_le_bytes(v);
+            self.int_dirty |= 1 << reg;
+        }
+    }
+
+    fn set_bool(&mut self, reg: u8, v: bool) {
+        if reg < 16 {
+            self.bools = (self.bools & !(1 << reg)) | (v as u16) << reg;
+            self.bool_dirty = true;
+        }
+    }
+
+    fn load_constants(&mut self, shader: &Shader) {
+        for &(reg, v) in &shader.float_constants {
+            self.set_float(reg, v);
+        }
+        for &(reg, v) in &shader.int_constants {
+            self.set_int(reg, v);
+        }
+        for &(reg, v) in &shader.bool_constants {
+            self.set_bool(reg, v);
+        }
+    }
+
+    /// Sends what changed, to the geometry shader's registers when
+    /// `geometry`.
+    fn emit(&mut self, l: &mut CommandList, geometry: bool) {
+        let (bools, ints, fconfig, fdata) = if geometry {
+            (regs::GSH_BOOLUNIFORM, regs::GSH_INTUNIFORM_I0, regs::GSH_FLOATUNIFORM_CONFIG, regs::GSH_FLOATUNIFORM_DATA)
+        } else {
+            (regs::VSH_BOOLUNIFORM, regs::VSH_INTUNIFORM_I0, regs::VSH_FLOATUNIFORM_CONFIG, regs::VSH_FLOATUNIFORM_DATA)
+        };
+        if self.bool_dirty {
+            l.write(bools, 0x7FFF_0000 | self.bools as u32);
+            self.bool_dirty = false;
+        }
+        if self.int_dirty != 0 {
+            l.write_incremental(ints, &self.ints);
+            self.int_dirty = 0;
+        }
+        let mut dirty = self.float_dirty;
+        while dirty != 0 {
+            let start = dirty.trailing_zeros() as usize;
+            let run = (dirty >> start).trailing_ones() as usize;
+            let mut words = [0u32; 4 * 32];
+            let n = run.min(32);
+            for i in 0..n {
+                let [x, y, z, w] = self.floats[start + i];
+                words[i * 4..i * 4 + 4].copy_from_slice(&[w.to_bits(), z.to_bits(), y.to_bits(), x.to_bits()]);
+            }
+            l.write(fconfig, 0x8000_0000 | start as u32);
+            l.write_repeated(fdata, &words[..n * 4]);
+            dirty &= !(((1u128 << n) - 1) << start);
+        }
+        self.float_dirty = 0;
+    }
 }
 
 struct Effect {
@@ -172,13 +291,15 @@ pub struct Gpu {
     texenv_dirty: u8,
     texenv_buffer: u32,
     texenv_buffer_color: u32,
-    floats: [[f32; 4]; 96],
-    float_dirty: u128,
-    float_set: u128,
-    ints: [u32; 4],
-    int_dirty: u8,
-    bools: u16,
-    bool_dirty: bool,
+    fog_color: u32,
+    fog_lut: Option<crate::fog::FogLut>,
+    proctex: Option<crate::proctex::ProcTex>,
+    proctex_sent: Option<crate::proctex::ProcTex>,
+    vertex_uniforms: Uniforms,
+    geometry_uniforms: Uniforms,
+    lighting: Option<LightEnv>,
+    /// What the GPU has, to upload only what changed.
+    lighting_sent: Option<LightingWords>,
     lists: u64,
     last_words: usize,
 }
@@ -227,13 +348,14 @@ impl Gpu {
             texenv_dirty: 0x3F,
             texenv_buffer: 0,
             texenv_buffer_color: 0xFFFF_FFFF,
-            floats: [[0.0; 4]; 96],
-            float_dirty: 0,
-            float_set: 0,
-            ints: [0; 4],
-            int_dirty: 0,
-            bools: 0,
-            bool_dirty: false,
+            fog_color: 0,
+            fog_lut: None,
+            proctex: None,
+            proctex_sent: None,
+            vertex_uniforms: Uniforms::new(),
+            geometry_uniforms: Uniforms::new(),
+            lighting: None,
+            lighting_sent: None,
             lists: 0,
             last_words: 0,
         })
@@ -243,10 +365,11 @@ impl Gpu {
     /// as when another application ran; done automatically after HOME).
     pub fn reset_state(&mut self) {
         self.dirty = ALL;
+        self.lighting_sent = None;
+        self.proctex_sent = None;
         self.texenv_dirty = 0x3F;
-        self.float_dirty = self.float_set;
-        self.int_dirty = 0xF;
-        self.bool_dirty = true;
+        self.vertex_uniforms.dirty_all();
+        self.geometry_uniforms.dirty_all();
     }
 
     /// The command list (to add raw register writes).
@@ -403,86 +526,70 @@ impl Gpu {
         self.dirty |= SCISSOR;
     }
 
-    /// Uses `shader` for the following draws (its constants are loaded).
+    /// Uses `shader` (a vertex shader) for the following draws, without a
+    /// geometry shader. Its constants are loaded.
     pub fn bind_shader(&mut self, shader: &Shader) {
-        if self.program.as_ref().map(|p| p.id) != Some(shader.id) {
-            let p = &shader.program;
-            self.program = Some(ProgramState {
-                id: shader.id,
-                code: p.code.clone(),
-                opdescs: p.opdescs.clone(),
-                entry: p.entry,
-                outmap: shader.outmap,
-                outmap_mask: shader.outmap_mask,
-                outmap_mode: shader.outmap_mode,
-                outmap_clock: shader.outmap_clock,
-            });
+        self.bind_program(shader, None);
+    }
+
+    /// Uses a vertex shader and optionally a geometry shader, which receives
+    /// the vertex shader's outputs (in output register order) as its
+    /// inputs. Draw with [`Primitive::Geometry`] when it is set.
+    pub fn bind_program(&mut self, vertex: &Shader, geometry: Option<&Shader>) {
+        assert!(!vertex.is_geometry(), "the first shader must be a vertex shader");
+        assert!(geometry.is_none_or(|g| g.is_geometry()), "the second shader must be a geometry shader (.gsh)");
+        let same = self.program.as_ref().is_some_and(|p| {
+            p.vertex.id == vertex.id && p.geometry.as_ref().map(|g| g.id) == geometry.map(|g| g.id)
+        });
+        if !same {
+            self.program = Some(ProgramState { vertex: StageCode::of(vertex), geometry: geometry.map(StageCode::of) });
             self.dirty |= PROGRAM | ATTRIBS;
         }
-        for &(reg, v) in &shader.float_constants {
-            self.set_float(reg, v);
-        }
-        for &(reg, v) in &shader.int_constants {
-            self.set_int_raw(reg, v);
-        }
-        for &(reg, v) in &shader.bool_constants {
-            self.set_bool_raw(reg, v);
+        self.vertex_uniforms.load_constants(vertex);
+        if let Some(g) = geometry {
+            self.geometry_uniforms.load_constants(g);
         }
     }
 
-    fn set_float(&mut self, reg: u8, v: [f32; 4]) {
-        if reg < 96 {
-            self.floats[reg as usize] = v;
-            self.float_dirty |= 1 << reg;
-            self.float_set |= 1 << reg;
-        }
-    }
-
-    fn set_int_raw(&mut self, reg: u8, v: [u8; 4]) {
-        if reg < 4 {
-            self.ints[reg as usize] = u32::from_le_bytes(v);
-            self.int_dirty |= 1 << reg;
-        }
-    }
-
-    fn set_bool_raw(&mut self, reg: u8, v: bool) {
-        if reg < 16 {
-            self.bools = (self.bools & !(1 << reg)) | (v as u16) << reg;
-            self.bool_dirty = true;
+    fn uniforms(&mut self, loc: UniformLocation) -> &mut Uniforms {
+        match loc.stage {
+            ShaderKind::Vertex => &mut self.vertex_uniforms,
+            ShaderKind::Geometry => &mut self.geometry_uniforms,
         }
     }
 
     /// Sets a float uniform (`.fvec name`).
     pub fn set_vec4(&mut self, loc: UniformLocation, v: [f32; 4]) {
         debug_assert_eq!(loc.kind, UniformKind::Float);
-        self.set_float(loc.register, v);
+        self.uniforms(loc).set_float(loc.register, v);
     }
 
     /// Sets four float uniform registers from a matrix's rows
     /// (`.fvec name[4]`).
     pub fn set_mat4(&mut self, loc: UniformLocation, m: &Mat4) {
         debug_assert_eq!(loc.kind, UniformKind::Float);
+        let u = self.uniforms(loc);
         for (i, row) in m.rows.iter().enumerate() {
-            self.set_float(loc.register + i as u8, row.to_array());
+            u.set_float(loc.register + i as u8, row.to_array());
         }
     }
 
     /// Sets one register of a float uniform array.
     pub fn set_vec4_at(&mut self, loc: UniformLocation, index: u8, v: [f32; 4]) {
-        self.set_float(loc.register + index, v);
+        self.uniforms(loc).set_float(loc.register + index, v);
     }
 
     /// Sets an integer uniform (`.ivec name`): for loops use x as the count,
     /// y as the start and z as the step.
     pub fn set_ivec4(&mut self, loc: UniformLocation, v: [u8; 4]) {
         debug_assert_eq!(loc.kind, UniformKind::Int);
-        self.set_int_raw(loc.register, v);
+        self.uniforms(loc).set_int(loc.register, v);
     }
 
     /// Sets a boolean uniform (`.bool name`).
     pub fn set_bool(&mut self, loc: UniformLocation, v: bool) {
         debug_assert_eq!(loc.kind, UniformKind::Bool);
-        self.set_bool_raw(loc.register, v);
+        self.uniforms(loc).set_bool(loc.register, v);
     }
 
     /// Describes the vertices of the following draws.
@@ -529,6 +636,26 @@ impl Gpu {
         self.dirty |= TEXTURES;
     }
 
+    /// Samples a render target's colour buffer in unit 0-2 (render to
+    /// texture). Its sides must be powers of two; draw into it with the
+    /// untilted projections ([`Mat4::ortho`], [`Mat4::perspective`]) so that
+    /// texture coordinates follow the image (u = x, v = y).
+    pub fn bind_target_texture(&mut self, unit: usize, target: &RenderTarget, filter: crate::Filter, wrap: crate::Wrap) {
+        let (w, h) = (target.fb_width as u32, target.fb_height as u32);
+        assert!(w.is_power_of_two() && h.is_power_of_two() && w >= 8 && h >= 8, "render target textures need power-of-two sides");
+        use crate::{ColorFormat as C, TexFormat as T};
+        let format = match target.color_format {
+            C::Rgba8 => T::Rgba8,
+            C::Rgb8 => T::Rgb8,
+            C::Rgba5551 => T::Rgba5551,
+            C::Rgb565 => T::Rgb565,
+            C::Rgba4 => T::Rgba4,
+        };
+        let param = (filter as u32) << 1 | (filter as u32) << 2 | (wrap as u32) << 12 | (wrap as u32) << 8;
+        self.textures[unit] = Some(TexState { words: [0, w << 16 | h, param, 0, target.color.phys() >> 3], format: format as u32 });
+        self.dirty |= TEXTURES;
+    }
+
     /// Sets texture combiner stage `stage` (0-5).
     pub fn set_texenv(&mut self, stage: usize, env: TexEnv) {
         if self.texenv[stage] != env || self.dirty & TEXENV != 0 {
@@ -550,6 +677,44 @@ impl Gpu {
     pub fn set_texenv_buffer(&mut self, rgb_mask: u8, alpha_mask: u8, initial: u32) {
         self.texenv_buffer = (self.texenv_buffer & !0xFF00) | ((rgb_mask & 0xF) as u32) << 8 | ((alpha_mask & 0xF) as u32) << 12;
         self.texenv_buffer_color = initial;
+        self.dirty |= TEXENV_BUFFER;
+    }
+
+    /// Turns fragment lighting on with `env`, or off. The environment is
+    /// copied; call again after changing it. Only what changed is sent.
+    pub fn set_lighting(&mut self, env: Option<&LightEnv>) {
+        match (env, &self.lighting) {
+            (None, None) => {}
+            (Some(e), Some(cur)) if cur.same_contents(e) => {}
+            _ => {
+                self.lighting = env.cloned();
+                self.dirty |= LIGHTING;
+            }
+        }
+    }
+
+    /// Turns the procedural texture unit (`Source::Texture3`) on with
+    /// `proctex`, or off. Only what changed is sent.
+    pub fn set_proctex(&mut self, proctex: Option<&crate::proctex::ProcTex>) {
+        if self.proctex.as_ref() != proctex {
+            self.proctex = proctex.cloned();
+            self.dirty |= PROCTEX | TEXTURES;
+        }
+    }
+
+    /// Fog towards `color` (0xAABBGGRR) by `lut`, or no fog.
+    pub fn set_fog(&mut self, fog: Option<(&crate::fog::FogLut, u32)>) {
+        match fog {
+            Some((lut, color)) => {
+                self.texenv_buffer = (self.texenv_buffer & !0x1_00FF) | 5;
+                self.fog_color = color;
+                if self.fog_lut.as_ref() != Some(lut) {
+                    self.fog_lut = Some(lut.clone());
+                    self.dirty |= FOG;
+                }
+            }
+            None => self.texenv_buffer &= !0x1_00FF,
+        }
         self.dirty |= TEXENV_BUFFER;
     }
 
@@ -620,8 +785,13 @@ impl Gpu {
         if RESTORED.swap(false, Ordering::AcqRel) {
             self.reset_state();
         }
-        // Room for a full shader upload, every uniform and the draw itself.
-        self.ensure(2048);
+        // Room for a full shader upload, every uniform, the lighting and
+        // the draw itself.
+        let lighting_words = match &self.lighting {
+            Some(env) if self.dirty & LIGHTING != 0 => env.upload_words(),
+            _ => 0,
+        };
+        self.ensure(2048 + lighting_words);
         let l = &mut self.list;
         let d = self.dirty;
         if d & FB != 0 {
@@ -651,31 +821,7 @@ impl Gpu {
         }
         if d & PROGRAM != 0 {
             if let Some(p) = &self.program {
-                l.write_masked(regs::GEOSTAGE_CONFIG, 0x3, 0);
-                l.write_masked(regs::GEOSTAGE_CONFIG2, 0x3, 0);
-                l.write_masked(regs::VSH_COM_MODE, 0x1, 0);
-                let code = &p.code[..p.code.len().min(512)];
-                l.write(regs::VSH_CODETRANSFER_CONFIG, 0);
-                for chunk in code.chunks(128) {
-                    l.write_repeated(regs::VSH_CODETRANSFER_DATA, chunk);
-                }
-                l.write(regs::VSH_CODETRANSFER_END, 1);
-                l.write(regs::VSH_OPDESCS_CONFIG, 0);
-                if !p.opdescs.is_empty() {
-                    l.write_repeated(regs::VSH_OPDESCS_DATA, &p.opdescs);
-                }
-                l.write(regs::VSH_ENTRYPOINT, 0x7FFF_0000 | (p.entry & 0xFFFF));
-                l.write(regs::VSH_OUTMAP_MASK, p.outmap_mask);
-                l.write(regs::VSH_OUTMAP_TOTAL1, p.outmap[0].wrapping_sub(1));
-                l.write(regs::VSH_OUTMAP_TOTAL2, p.outmap[0].wrapping_sub(1));
-                l.write_masked(regs::PRIMITIVE_CONFIG, 0x1, p.outmap[0].wrapping_sub(1));
-                l.write_incremental(regs::SH_OUTMAP_TOTAL, &p.outmap);
-                l.write(regs::SH_OUTATTR_MODE, p.outmap_mode);
-                l.write(regs::SH_OUTATTR_CLOCK, p.outmap_clock);
-                l.write_masked(regs::GEOSTAGE_CONFIG, 0xA, 0);
-                l.write(regs::GSH_MISC0, 0);
-                l.write(regs::GSH_MISC1, 0);
-                l.write(regs::GSH_INPUTBUFFER_CONFIG, 0xA000_0000);
+                emit_program(l, p);
             }
         }
         if d & ATTRIBS != 0 && self.attrib_count > 0 {
@@ -723,6 +869,9 @@ impl Gpu {
                     l.write(bases[i].1, t.format);
                 }
             }
+            if let Some(p) = &self.proctex {
+                units |= 1 << 10 | ((p.texcoord as u32 & 3) << 8);
+            }
             l.write_masked(regs::TEXUNIT_CONFIG, 0xB, units | 1 << 12 | 1 << 16);
             l.write_masked(regs::TEXUNIT_CONFIG, 0x4, 1 << 16);
             l.write(regs::TEXUNIT0_SHADOW, 1);
@@ -730,7 +879,39 @@ impl Gpu {
         if d & TEXENV_BUFFER != 0 {
             l.write_masked(regs::TEXENV_UPDATE_BUFFER, 0x7, self.texenv_buffer);
             l.write(regs::TEXENV_BUFFER_COLOR, self.texenv_buffer_color);
-            l.write(regs::FOG_COLOR, 0);
+            l.write(regs::FOG_COLOR, self.fog_color);
+        }
+        if d & PROCTEX != 0 {
+            if let Some(p) = &self.proctex {
+                let sent = self.proctex_sent.as_ref();
+                l.write_incremental(regs::TEXUNIT3_PROCTEX0, &p.words());
+                let tables = [(0u32, &p.noise_lut), (2, &p.rgb_lut), (3, &p.alpha_lut)];
+                for (id, lut) in tables {
+                    let old = sent.map(|s| match id {
+                        0 => &s.noise_lut,
+                        2 => &s.rgb_lut,
+                        _ => &s.alpha_lut,
+                    });
+                    if old != Some(lut) {
+                        l.write(regs::PROCTEX_LUT, id << 8);
+                        l.write_repeated(regs::PROCTEX_LUT_DATA0, &lut.0);
+                    }
+                }
+                if sent.is_none_or(|s| s.color_tables() != p.color_tables()) {
+                    let (colors, diffs) = p.color_tables();
+                    l.write(regs::PROCTEX_LUT, 4 << 8);
+                    l.write_repeated(regs::PROCTEX_LUT_DATA0, &colors[..]);
+                    l.write(regs::PROCTEX_LUT, 5 << 8);
+                    l.write_repeated(regs::PROCTEX_LUT_DATA0, &diffs[..]);
+                }
+                self.proctex_sent = Some(p.clone());
+            }
+        }
+        if d & FOG != 0 && self.texenv_buffer & 7 == 5 {
+            if let Some(lut) = &self.fog_lut {
+                l.write(regs::FOG_LUT_INDEX, 0);
+                l.write_repeated(regs::FOG_LUT_DATA0, &lut.data);
+            }
         }
         if d & TEXENV != 0 {
             self.texenv_dirty = 0x3F;
@@ -743,35 +924,41 @@ impl Gpu {
         }
         self.texenv_dirty = 0;
         if d & LIGHTING != 0 {
-            l.write(regs::LIGHTING_ENABLE0, 0);
-            l.write(regs::LIGHTING_ENABLE1, 1);
+            let enabled = self.lighting.is_some();
+            l.write(regs::LIGHTING_ENABLE0, enabled as u32);
+            l.write(regs::LIGHTING_ENABLE1, !enabled as u32);
+            if let Some(env) = &self.lighting {
+                let w = env.words();
+                let sent = self.lighting_sent.as_ref();
+                l.write(regs::LIGHTING_AMBIENT, w.ambient);
+                l.write_incremental(regs::LIGHTING_NUM_LIGHTS, &w.num_config);
+                l.write_incremental(regs::LIGHTING_LUTINPUT_ABS, &w.lut_input);
+                l.write(regs::LIGHTING_LIGHT_PERMUTATION, w.permutation);
+                for (slot, words) in &w.lights {
+                    if sent.is_none_or(|s| !s.lights.contains(&(*slot, *words))) {
+                        l.write_incremental(regs::LIGHT0_SPECULAR0 + *slot as u16 * 0x10, words);
+                    }
+                }
+                for (index, table) in &w.luts {
+                    if sent.is_none_or(|s| !s.luts.iter().any(|(i, t)| i == index && t == table)) {
+                        l.write(regs::LIGHTING_LUT_INDEX, *index);
+                        for chunk in table.chunks(8) {
+                            l.write_repeated(regs::LIGHTING_LUT_DATA0, chunk);
+                        }
+                    }
+                }
+                self.lighting_sent = Some(w);
+            } else {
+                self.lighting_sent = None;
+            }
         }
         self.dirty = 0;
 
         // Uniforms.
-        if self.bool_dirty {
-            l.write(regs::VSH_BOOLUNIFORM, 0x7FFF_0000 | self.bools as u32);
-            self.bool_dirty = false;
+        self.vertex_uniforms.emit(l, false);
+        if self.program.as_ref().is_some_and(|p| p.geometry.is_some()) {
+            self.geometry_uniforms.emit(l, true);
         }
-        if self.int_dirty != 0 {
-            l.write_incremental(regs::VSH_INTUNIFORM_I0, &self.ints);
-            self.int_dirty = 0;
-        }
-        let mut dirty = self.float_dirty;
-        while dirty != 0 {
-            let start = dirty.trailing_zeros() as usize;
-            let run = (dirty >> start).trailing_ones() as usize;
-            let mut words = [0u32; 4 * 32];
-            let n = run.min(32);
-            for i in 0..n {
-                let [x, y, z, w] = self.floats[start + i];
-                words[i * 4..i * 4 + 4].copy_from_slice(&[w.to_bits(), z.to_bits(), y.to_bits(), x.to_bits()]);
-            }
-            l.write(regs::VSH_FLOATUNIFORM_CONFIG, 0x8000_0000 | start as u32);
-            l.write_repeated(regs::VSH_FLOATUNIFORM_DATA, &words[..n * 4]);
-            dirty &= !(((1u128 << n) - 1) << start);
-        }
-        self.float_dirty = 0;
     }
 
     /// Draws `count` vertices from `first` of the bound vertex buffer.
@@ -797,10 +984,16 @@ impl Gpu {
     /// Draws `count` vertices picked by 16-bit `indices` from the bound
     /// vertex buffer.
     pub fn draw_elements(&mut self, primitive: Primitive, indices: &LinearBuffer<u16>, count: u32) {
+        self.draw_elements_range(primitive, indices, 0, count);
+    }
+
+    /// Like [`Gpu::draw_elements`], from index `first`.
+    pub fn draw_elements_range(&mut self, primitive: Primitive, indices: &LinearBuffer<u16>, first: u32, count: u32) {
         assert!(self.fb.is_some(), "no render target bound");
         assert!(self.program.is_some(), "no shader bound");
+        assert!((first + count) as usize <= indices.len(), "index range out of bounds");
         self.update();
-        let pa = indices.phys();
+        let pa = indices.phys() + first * 2;
         assert!(pa >= BUFFER_BASE);
         let l = &mut self.list;
         let triangles = primitive == Primitive::Triangles;
@@ -824,6 +1017,119 @@ impl Gpu {
         l.write_masked(regs::PRIMITIVE_CONFIG, 0x8, 0);
         l.write_masked(regs::PRIMITIVE_CONFIG, 0x8, 0);
         self.drawn = true;
+    }
+}
+
+fn upload_code(l: &mut CommandList, code: &StageCode, geometry: bool) {
+    let (config, data, end, op_config, op_data) = if geometry {
+        (regs::GSH_CODETRANSFER_CONFIG, regs::GSH_CODETRANSFER_DATA, regs::GSH_CODETRANSFER_END, regs::GSH_OPDESCS_CONFIG, regs::GSH_OPDESCS_DATA)
+    } else {
+        (regs::VSH_CODETRANSFER_CONFIG, regs::VSH_CODETRANSFER_DATA, regs::VSH_CODETRANSFER_END, regs::VSH_OPDESCS_CONFIG, regs::VSH_OPDESCS_DATA)
+    };
+    // The vertex shader units hold 512 instructions.
+    let words = if geometry { &code.code[..code.code.len().min(4096)] } else { &code.code[..code.code.len().min(512)] };
+    l.write(config, 0);
+    for chunk in words.chunks(128) {
+        l.write_repeated(data, chunk);
+    }
+    l.write(end, 1);
+    l.write(op_config, 0);
+    if !code.opdescs.is_empty() {
+        l.write_repeated(op_data, &code.opdescs);
+    }
+}
+
+/// Merges a vertex and a geometry shader's output maps: shared semantics
+/// first, then the geometry shader's, then the vertex shader's (libctru's
+/// order).
+fn merge_outmaps(vsh: &[u32; 8], gsh: &[u32; 8]) -> [u32; 8] {
+    let mut out = [0x1F1F_1F1Fu32; 8];
+    out[0] = 0;
+    let (mut vsh_common, mut gsh_common) = (0u32, 0u32);
+    let push = |out: &mut [u32; 8], v: u32| {
+        if out[0] < 7 {
+            out[0] += 1;
+            out[out[0] as usize] = v;
+        }
+    };
+    for i in 1..8 {
+        if gsh[i] == 0x1F1F_1F1F {
+            break;
+        }
+        if let Some(j) = (1..8).find(|&j| vsh[j] == gsh[i]) {
+            push(&mut out, gsh[i]);
+            vsh_common |= 1 << j;
+            gsh_common |= 1 << i;
+        }
+    }
+    for i in 1..8 {
+        if gsh[i] == 0x1F1F_1F1F {
+            break;
+        }
+        if gsh_common & (1 << i) == 0 {
+            push(&mut out, gsh[i]);
+        }
+    }
+    for i in 1..8 {
+        if vsh[i] == 0x1F1F_1F1F {
+            break;
+        }
+        if vsh_common & (1 << i) == 0 {
+            push(&mut out, vsh[i]);
+        }
+    }
+    out
+}
+
+/// libctru's `shaderProgramConfigure`.
+fn emit_program(l: &mut CommandList, p: &ProgramState) {
+    let v = &p.vertex;
+    let g = p.geometry.as_ref();
+    l.write_masked(regs::GEOSTAGE_CONFIG, 0x3, if g.is_some() { 2 } else { 0 });
+    l.write_masked(regs::GEOSTAGE_CONFIG2, 0x3, 0);
+    l.write_masked(regs::VSH_COM_MODE, 0x1, g.is_some() as u32);
+    upload_code(l, v, false);
+    l.write(regs::VSH_ENTRYPOINT, 0x7FFF_0000 | (v.entry & 0xFFFF));
+    l.write(regs::VSH_OUTMAP_MASK, v.outmap_mask);
+    l.write(regs::VSH_OUTMAP_TOTAL1, v.outmap[0].wrapping_sub(1));
+    l.write(regs::VSH_OUTMAP_TOTAL2, v.outmap[0].wrapping_sub(1));
+    let main = g.unwrap_or(v);
+    let (mut outmap, mut mode, mut clock) = (main.outmap, main.outmap_mode, main.outmap_clock);
+    if let Some(g) = g {
+        upload_code(l, g, true);
+        l.write(regs::GSH_ENTRYPOINT, 0x7FFF_0000 | (g.entry & 0xFFFF));
+        l.write(regs::GSH_OUTMAP_MASK, g.outmap_mask);
+        if g.merge {
+            outmap = merge_outmaps(&v.outmap, &g.outmap);
+            mode |= v.outmap_mode;
+            clock |= v.outmap_clock;
+        }
+    }
+    l.write_masked(regs::PRIMITIVE_CONFIG, 0x1, outmap[0].wrapping_sub(1));
+    l.write_incremental(regs::SH_OUTMAP_TOTAL, &outmap);
+    l.write(regs::SH_OUTATTR_MODE, mode);
+    l.write(regs::SH_OUTATTR_CLOCK, clock);
+    match g {
+        Some(g) => {
+            let gm = g.geometry.unwrap_or(citronnade_shader::GeometryMode { mode: 0, fixed_start: 0, variable_count: 0, fixed_count: 0 });
+            // Inputs per vertex: the vertex shader's outputs.
+            let stride = v.outmap[0].max(1);
+            l.write_masked(regs::GEOSTAGE_CONFIG, 0xA, if gm.mode == 1 { 0x8000_0000 } else { 0 });
+            let mut misc = gm.mode as u32;
+            if gm.mode == 2 {
+                misc |= 0x0100_0000 | (gm.fixed_start as u32) << 16 | (stride - 1) << 12 | (gm.fixed_count as u32).saturating_sub(1) << 8;
+            }
+            l.write(regs::GSH_MISC0, misc);
+            l.write(regs::GSH_MISC1, if gm.mode == 1 { (gm.variable_count as u32).saturating_sub(1) } else { 0 });
+            l.write(regs::GSH_INPUTBUFFER_CONFIG, 0x0800_0000 | if gm.mode != 0 { 0x100 } else { 0 } | (stride - 1));
+            l.write_incremental(regs::GSH_ATTRIBUTES_PERMUTATION_LOW, &[0x7654_3210, 0xFEDC_BA98]);
+        }
+        None => {
+            l.write_masked(regs::GEOSTAGE_CONFIG, 0xA, 0);
+            l.write(regs::GSH_MISC0, 0);
+            l.write(regs::GSH_MISC1, 0);
+            l.write(regs::GSH_INPUTBUFFER_CONFIG, 0xA000_0000);
+        }
     }
 }
 

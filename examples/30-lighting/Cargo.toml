@@ -1,0 +1,23 @@
+[package]
+name = "lighting"
+description = "Per-pixel fragment lighting: directional, spot and point lights, and a specular LUT drawn on the touch screen"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Fragment lighting"
+covers = ["LightEnv", "Light", "LightLut", "spotlights", "distance attenuation", "normalquat and view outputs"]
+
+[package.metadata.citronnade.emulator]
+frames = 130
+input = ["touch 70-90:120,80", "100-102:a", "120-124:start"]
+expect = ["lighting: sphere", "sphere lit", "highlight ok", "lut edited", "spotlight off", "bye:"]
+reject = ["panicked", "unlit", "no highlight"]
+exits = true
+shots = [40, 95]
+
+[dependencies]
+citronnade.workspace = true

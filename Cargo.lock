@@ -99,6 +99,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "fog"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "geometry-shader"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "gpu-clear"
 version = "0.1.0"
 dependencies = [
@@ -134,10 +148,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "lighting"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "microphone"
 version = "0.1.0"
 dependencies = [
  "citronnade",
+]
+
+[[package]]
+name = "model"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+ "citronnade-assets",
 ]
 
 [[package]]
@@ -156,6 +185,20 @@ dependencies = [
 
 [[package]]
 name = "panic"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "procedural-texture"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "render-to-texture"
 version = "0.1.0"
 dependencies = [
  "citronnade",
@@ -184,6 +227,20 @@ dependencies = [
 
 [[package]]
 name = "sprites"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "stencil"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "stereo-3d"
 version = "0.1.0"
 dependencies = [
  "citronnade",

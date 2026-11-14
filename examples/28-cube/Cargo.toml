@@ -1,0 +1,23 @@
+[package]
+name = "cube"
+description = "A lit cube in perspective with a depth buffer and an orbit camera on the Circle Pad"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Cube"
+covers = ["Mat4::perspective_tilt", "depth buffer", "back-face culling", "vertex lighting in a shader", "draw_elements"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["stick 50-70:30000,0", "100-104:start"]
+expect = ["cube: 24 vertices", "depth test ok", "culling ok", "bye:"]
+reject = ["panicked", "wrong"]
+exits = true
+shots = [40, 90]
+
+[dependencies]
+citronnade.workspace = true

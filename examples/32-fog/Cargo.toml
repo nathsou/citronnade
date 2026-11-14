@@ -1,0 +1,23 @@
+[package]
+name = "fog"
+description = "Fog and depth cueing: an avenue of pillars fading into the distance"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Fog"
+covers = ["FogLut", "set_fog", "exponential fog", "depth cueing"]
+
+[package.metadata.citronnade.emulator]
+frames = 110
+input = ["60-62:a", "90-94:start"]
+expect = ["fog: pillars", "far pillars fogged", "mode: depth cueing", "bye:"]
+reject = ["panicked", "not fogged"]
+exits = true
+shots = [40, 80]
+
+[dependencies]
+citronnade.workspace = true

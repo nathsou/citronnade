@@ -7,7 +7,7 @@ use citronnade_shader::{Constant, Program, ShaderKind, ShbinError, UniformKind};
 
 static NEXT_ID: AtomicU32 = AtomicU32::new(1);
 
-/// A vertex shader (geometry shaders come with v0.7).
+/// A vertex or geometry shader.
 pub struct Shader {
     pub(crate) program: Program,
     pub(crate) id: u32,
@@ -24,6 +24,8 @@ pub struct Shader {
 /// Where a uniform lives.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UniformLocation {
+    /// The shader stage whose uniforms these are.
+    pub stage: ShaderKind,
     pub kind: UniformKind,
     /// The first register.
     pub register: u8,
@@ -40,7 +42,6 @@ impl Shader {
 
     /// Uses an assembled program.
     pub fn from_program(program: Program) -> Shader {
-        assert!(program.kind == ShaderKind::Vertex, "geometry shaders are not supported yet");
         let (outmap, outmap_mask, outmap_mode, outmap_clock) = program.output_map();
         let mut float_constants = Vec::new();
         let mut int_constants = Vec::new();
@@ -67,7 +68,11 @@ impl Shader {
 
     /// Finds a uniform by name.
     pub fn uniform(&self, name: &str) -> Option<UniformLocation> {
-        self.program.uniform(name).map(|u| UniformLocation { kind: u.kind, register: u.first, count: u.count })
+        self.program.uniform(name).map(|u| UniformLocation { stage: self.program.kind, kind: u.kind, register: u.first, count: u.count })
+    }
+
+    pub fn is_geometry(&self) -> bool {
+        self.program.kind == ShaderKind::Geometry
     }
 
     /// The assembled program.

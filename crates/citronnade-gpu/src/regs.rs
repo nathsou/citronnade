@@ -117,8 +117,10 @@ pub const TEXUNIT3_PROCTEX0: u16 = 0x00A8;
 pub const TEXUNIT3_PROCTEX1: u16 = 0x00A9;
 pub const TEXUNIT3_PROCTEX2: u16 = 0x00AA;
 pub const TEXUNIT3_PROCTEX3: u16 = 0x00AB;
-pub const TEXUNIT3_PROCTEX4: u16 = 0x000A;
-pub const TEXUNIT3_PROCTEX5: u16 = 0x000D;
+/// (libctru's header says 0x00A, a typo: the six proctex registers are
+/// consecutive.)
+pub const TEXUNIT3_PROCTEX4: u16 = 0x00AC;
+pub const TEXUNIT3_PROCTEX5: u16 = 0x00AD;
 pub const PROCTEX_LUT: u16 = 0x00AF;
 pub const PROCTEX_LUT_DATA0: u16 = 0x00B0;
 pub const PROCTEX_LUT_DATA1: u16 = 0x00B1;

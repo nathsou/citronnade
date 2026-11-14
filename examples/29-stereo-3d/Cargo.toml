@@ -1,0 +1,24 @@
+[package]
+name = "stereo-3d"
+description = "Stereoscopic 3D: one image per eye, eye separation from the 3D slider, an adjustable convergence plane"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Stereo 3D"
+covers = ["Mat4::perspective_stereo_tilt", "TopMode::Stereo", "slider_3d", "show_target_right", "convergence plane"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["70-72:up", "100-104:start"]
+expect = ["stereo-3d:", "slider 1.00", "eyes differ", "screen plane 5.0", "bye:"]
+reject = ["panicked", "eyes identical"]
+exits = true
+shots = [40]
+options = { citra_render_3d = "side-by-side", citra_factor_3d = "100" }
+
+[dependencies]
+citronnade.workspace = true

@@ -72,11 +72,16 @@ emulator's log.
 - `citronnade`: the API programs use: `System`, `Screens` and `Canvas`,
   `Input`, `Console`, the panic screen, `math`, `gpu`.
 - `citronnade-gpu`: the PICA200: command lists, GX transfers through GSP,
-  VRAM, render targets, shaders, vertex buffers, textures, texture
-  combiners, blending, depth and stencil (state handling follows citro3d).
+  VRAM, render targets (also as textures), vertex and geometry shaders,
+  vertex buffers, textures, texture combiners, fragment lighting, fog, the
+  procedural texture unit, blending, depth and stencil, meshes, and the
+  maths for them (matrices, quaternions, stereoscopic projections). State
+  handling follows citro3d.
 - `citronnade-shader`: an assembler for PICA200 shaders with picasso's
   syntax, writing SHBIN files; `gpu::shader!` runs it at compile time and
   reports errors at the shader's line.
+- `citronnade-assets`: build-script conversions: PNG images to tiled
+  textures (`.ctex`), OBJ models to meshes (`.cmsh`).
 - `citronnade-formats`: ELF to 3DSX conversion, SMDH, zlib and PNG, shared
   by the host tool and programs.
 - `cargo-citronnade`: builds, packages each binary as a `.3dsx` with its
@@ -116,6 +121,15 @@ emulator's log.
 | 25 | [texenv](examples/25-texenv) | 0.6 | texture combiners: multitexturing, interpolation, dot3, alpha test |
 | 26 | [sprites](examples/26-sprites) | 0.6 | thousands of batched sprites, indexed drawing, blending |
 | 27 | [gpu-text](examples/27-gpu-text) | 0.6 | text from a font atlas on both screens |
+| 28 | [cube](examples/28-cube) | 0.7 | perspective, the depth buffer, culling, an orbit camera |
+| 29 | [stereo-3d](examples/29-stereo-3d) | 0.7 | stereoscopic rendering, slider-driven eye separation, the convergence plane |
+| 30 | [lighting](examples/30-lighting) | 0.7 | fragment lighting: directional, spot and point lights, a specular LUT drawn on the touch screen |
+| 31 | [geometry-shader](examples/31-geometry-shader) | 0.7 | points expanded into billboards by a geometry shader |
+| 32 | [fog](examples/32-fog) | 0.7 | fog and depth cueing |
+| 33 | [render-to-texture](examples/33-render-to-texture) | 0.7 | an offscreen target as a texture: a live minimap |
+| 34 | [procedural-texture](examples/34-procedural-texture) | 0.7 | the procedural texture unit: rings, marble, bricks, clouds |
+| 35 | [stencil](examples/35-stencil) | 0.7 | stencil reflections and outlines |
+| 36 | [model](examples/36-model) | 0.7 | an original model converted at build time, loaded from the RomFS |
 
 Audio needs the console's DSP firmware, which is not distributed: dump your
 own with the DSP1 homebrew to `/3ds/dspfirm.cdc` on the SD card.
@@ -133,4 +147,5 @@ core and check their own output: see [docs/emulator.md](docs/emulator.md).
 
 ## License
 
-MIT or Apache-2.0, at your option.
+MIT or Apache-2.0, at your option. See [NOTICE.md](NOTICE.md) for the
+libraries whose behaviour Citronnade follows (libctru, citro3d, picasso).

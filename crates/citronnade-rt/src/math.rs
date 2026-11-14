@@ -89,9 +89,12 @@ pub fn atan2(y: f32, x: f32) -> f32 {
     }
     let (ax, ay) = (x.abs(), y.abs());
     let (a, swapped) = if ay > ax { (ax / ay, true) } else { (ay / ax, false) };
-    // atan on [0, 1]: a minimax polynomial.
-    let s = a * a;
-    let mut r = ((-0.046_496_475 * s + 0.159_314_22) * s - 0.327_622_76) * s * a + a;
+    // atan on [0, 1]: above tan(pi/8), atan(a) = pi/4 + atan((a - 1) / (a + 1)),
+    // which leaves |t| <= tan(pi/8) for an odd series (error below 1e-6).
+    let (t, base) = if a > 0.414_213_57 { ((a - 1.0) / (a + 1.0), core::f32::consts::FRAC_PI_4) } else { (a, 0.0) };
+    let s = t * t;
+    let series = t * (1.0 + s * (-1.0 / 3.0 + s * (1.0 / 5.0 + s * (-1.0 / 7.0 + s * (1.0 / 9.0 + s * (-1.0 / 11.0))))));
+    let mut r = base + series;
     if swapped {
         r = FRAC_PI_2 - r;
     }
@@ -111,11 +114,60 @@ pub fn atan(x: f32) -> f32 {
 pub fn exp(x: f32) -> f32 {
     // e^x = 2^(x / ln 2) = 2^k * 2^f
     let t = x * core::f32::consts::LOG2_E;
-    let k = floor(t);
-    let f = t - k;
-    let p = 1.0 + f * (0.693_147_2 + f * (0.240_226_5 + f * (0.055_504_1 + f * (0.009_618_1 + f * 0.001_333_6))));
+    let k = floor(t + 0.5);
+    let f = t - k; // in [-0.5, 0.5]
+    // Taylor series of 2^f = e^(f ln 2), to the 7th power.
+    let p = 1.0
+        + f * (0.693_147_2
+            + f * (0.240_226_5 + f * (0.055_504_1 + f * (0.009_618_13 + f * (0.001_333_36 + f * (0.000_154_04 + f * 0.000_015_25))))));
     let k = (k as i32).clamp(-126, 127);
     p * f32::from_bits(((k + 127) as u32) << 23)
+}
+
+/// The base-2 logarithm (NaN for negative numbers, -inf for 0).
+pub fn log2(x: f32) -> f32 {
+    if x.is_nan() || x < 0.0 {
+        return f32::NAN;
+    }
+    if x == 0.0 {
+        return f32::NEG_INFINITY;
+    }
+    if x.is_infinite() {
+        return x;
+    }
+    // x = m * 2^e with m in [1, 2); normalise denormals first.
+    let (mut bits, mut bias) = (x.to_bits(), 0i32);
+    if bits >> 23 == 0 {
+        bits = (x * 8_388_608.0).to_bits();
+        bias = 23;
+    }
+    let e = ((bits >> 23) & 0xFF) as i32 - 127 - bias;
+    let m = f32::from_bits((bits & 0x7F_FFFF) | 0x3F80_0000);
+    // log2(m) = 2 * atanh(s) / ln 2 with s = (m - 1) / (m + 1), |s| < 1/3.
+    let s = (m - 1.0) / (m + 1.0);
+    let s2 = s * s;
+    let series = s * (2.0 + s2 * (2.0 / 3.0 + s2 * (2.0 / 5.0 + s2 * (2.0 / 7.0 + s2 * (2.0 / 9.0)))));
+    e as f32 + series * core::f32::consts::LOG2_E
+}
+
+/// The natural logarithm.
+pub fn ln(x: f32) -> f32 {
+    log2(x) * core::f32::consts::LN_2
+}
+
+/// `x` to the power `y` (`x` must not be negative unless `y` is an integer).
+pub fn pow(x: f32, y: f32) -> f32 {
+    if y == 0.0 {
+        return 1.0;
+    }
+    if x == 0.0 {
+        return if y > 0.0 { 0.0 } else { f32::INFINITY };
+    }
+    if x < 0.0 {
+        let r = exp(y * ln(-x));
+        return if floor(y) == y && (y as i64) % 2 != 0 { -r } else { r };
+    }
+    exp(y * ln(x))
 }
 
 /// Linear interpolation.
@@ -142,7 +194,15 @@ mod tests {
             if x.abs() < 20.0 {
                 assert!((exp(x) - x.exp()).abs() / x.exp() < 1e-5, "exp {x}");
             }
+            if x > 0.0 {
+                assert!((ln(x) - x.ln()).abs() < 2e-5, "ln {x}");
+                assert!((log2(x) - x.log2()).abs() < 3e-5, "log2 {x}");
+                let p = pow(x, 2.7);
+                assert!((p - x.powf(2.7)).abs() / x.powf(2.7) < 1e-4, "pow {x}");
+            }
         }
+        assert!((log2(1e-40) - 1e-40f32.log2()).abs() < 1e-3);
+        assert!((pow(-2.0, 3.0) + 8.0).abs() < 1e-3);
     }
 }
 

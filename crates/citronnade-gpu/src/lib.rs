@@ -20,7 +20,11 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+pub mod fog;
+pub mod lighting;
 pub mod math;
+pub mod mesh;
+pub mod proctex;
 pub mod regs;
 mod shader;
 mod state;
@@ -39,9 +43,14 @@ mod target;
 #[cfg(target_arch = "arm")]
 mod texture;
 #[cfg(target_arch = "arm")]
+mod gpu_mesh;
+#[cfg(target_arch = "arm")]
 pub mod vram;
 
 pub use citronnade_shader::{self as asm, Program, ShbinError};
+pub use fog::FogLut;
+pub use lighting::{DistanceAttenuation, Fresnel, Light, LightEnv, LightLut, LutId, LutInput, Material};
+pub use proctex::{ProcClamp, ProcLut, ProcMap, ProcNoise, ProcShift, ProcTex};
 pub use shader::{Shader, UniformLocation};
 pub use state::*;
 pub use tiling::{Filter, TexFormat, Wrap};
@@ -58,6 +67,9 @@ pub use linear::LinearBuffer;
 pub use target::{ColorFormat, DepthFormat, RenderTarget};
 #[cfg(target_arch = "arm")]
 pub use texture::Texture;
+#[cfg(target_arch = "arm")]
+pub use gpu_mesh::Mesh;
+pub use mesh::{MeshData, MeshError, MeshVertex, Submesh};
 
 /// The result of a GPU operation.
 #[cfg(target_arch = "arm")]
@@ -84,6 +96,22 @@ pub fn f32_to_f31(f: f32) -> u32 {
         (sign << 30) | (0x7F << 23)
     } else {
         (sign << 30) | ((exponent as u32) << 23) | mantissa
+    }
+}
+
+/// Converts a float to the GPU's 20-bit float (1 sign, 7 exponent, 12
+/// mantissa bits).
+pub fn f32_to_f20(f: f32) -> u32 {
+    let i = f.to_bits();
+    let mantissa = (i & 0x7F_FFFF) >> 11;
+    let exponent = ((i >> 23) & 0xFF) as i32 - 127 + 63;
+    let sign = i >> 31;
+    if exponent < 0 {
+        sign << 19
+    } else if exponent > 0x7F {
+        (sign << 19) | (0x7F << 12)
+    } else {
+        (sign << 19) | ((exponent as u32) << 12) | mantissa
     }
 }
 

@@ -198,6 +198,33 @@ impl Mat4 {
         m
     }
 
+    /// An orthographic projection without the screens' rotation, for
+    /// render targets used as textures (citro3d's `Mtx_Ortho`).
+    pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> Mat4 {
+        let mut m = Mat4::ZERO;
+        m.rows[0].x = 2.0 / (right - left);
+        m.rows[0].w = (left + right) / (left - right);
+        m.rows[1].y = 2.0 / (top - bottom);
+        m.rows[1].w = (bottom + top) / (bottom - top);
+        m.rows[2].z = 1.0 / (near - far);
+        m.rows[2].w = 0.5 * (near + far) / (near - far) - 0.5;
+        m.rows[3].w = 1.0;
+        m
+    }
+
+    /// A perspective projection without the screens' rotation, for render
+    /// targets used as textures (citro3d's `Mtx_Persp`).
+    pub fn perspective(fovy: f32, aspect: f32, near: f32, far: f32) -> Mat4 {
+        let t = tan(fovy / 2.0);
+        let mut m = Mat4::ZERO;
+        m.rows[0].x = 1.0 / (t * aspect);
+        m.rows[1].y = 1.0 / t;
+        m.rows[2].w = far * near / (near - far);
+        m.rows[3].z = -1.0;
+        m.rows[2].z = -m.rows[3].z * near / (near - far);
+        m
+    }
+
     /// A pixel-space projection for a screen `width` x `height` (400x240 or
     /// 320x240) with the origin at the top left and y going down, for 2D.
     pub fn screen_2d(width: f32, height: f32) -> Mat4 {

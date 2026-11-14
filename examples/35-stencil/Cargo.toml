@@ -1,0 +1,23 @@
+[package]
+name = "stencil"
+description = "The stencil buffer: a mirror floor reflection and an object outline"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Stencil"
+covers = ["set_stencil_test", "set_stencil_op", "stencil clears", "colour write masks", "mirrored culling"]
+
+[package.metadata.citronnade.emulator]
+frames = 110
+input = ["70-72:a", "90-94:start"]
+expect = ["stencil:", "reflection ok", "outline ok", "outline off", "bye:"]
+reject = ["panicked", "wrong"]
+exits = true
+shots = [40, 80]
+
+[dependencies]
+citronnade.workspace = true

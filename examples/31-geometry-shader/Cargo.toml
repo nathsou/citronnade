@@ -1,0 +1,23 @@
+[package]
+name = "geometry-shader"
+description = "A particle fountain: points expanded into camera-facing quads by a geometry shader"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.7"
+title = "Geometry shader"
+covers = ["geometry shaders", ".gsh point", "setemit/emit", "bind_program", "Primitive::Geometry", "additive particles"]
+
+[package.metadata.citronnade.emulator]
+frames = 110
+input = ["90-94:start"]
+expect = ["geometry-shader:", "particles drawn", "floor drawn", "bye:"]
+reject = ["panicked", "missing"]
+exits = true
+shots = [60]
+
+[dependencies]
+citronnade.workspace = true
