@@ -11,7 +11,7 @@
 
 use core::sync::atomic::{fence, AtomicBool, AtomicU32, Ordering};
 
-use citronnade_rt::sync::{Event, SpinLock};
+use citronnade_rt::sync::{Event, Mutex as SpinLock};
 use citronnade_rt::thread::{Builder, JoinHandle};
 use citronnade_rt::{memory, svc};
 

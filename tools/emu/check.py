@@ -10,6 +10,7 @@ Each example declares its check in Cargo.toml:
     exits = true                      # the program must exit by itself
     shots = [30]                      # frames to save as PNG in target/emu-shots
     sd_files = { "dir/file.txt" = "contents" }    # files put on the virtual SD card first
+    audio_peak_min = 2000             # the program must make sound at least this loud
     input = ["10-20:a", "touch 30-40:160,120"]   # see tools/emu/run.c
 
 Usage: tools/emu/check.py [example-name ...] [--release] [--no-build]
@@ -79,6 +80,11 @@ def run_example(name, meta, profile):
     for bad in check.get("reject", []):
         if any(bad in line for line in lines):
             problems.append(f"unexpected: {bad!r}")
+    peak = re.search(r"audio peak (\d+)", output)
+    if "audio_peak_min" in check:
+        level = int(peak.group(1)) if peak else 0
+        if level < check["audio_peak_min"]:
+            problems.append(f"audio peak {level} below {check['audio_peak_min']}")
     exited = "exiting" in output and "TerminateProcess" in output
     if check.get("exits", False) and not exited:
         problems.append("the program did not exit")

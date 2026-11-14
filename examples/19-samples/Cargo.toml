@@ -1,0 +1,26 @@
+[package]
+name = "samples"
+description = "Plays WAV files from the RomFS on several channels, with panning and looping"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.5"
+title = "Samples"
+covers = ["WAV", "several voices", "panning", "looping"]
+romfs = "romfs"
+
+[package.metadata.citronnade.emulator]
+frames = 260
+input = ["60-62:a", "90-92:b", "120-122:x", "stick 140-170:-30000,0", "150-152:y", "190-192:l", "232-236:start"]
+expect = ["loaded chime.wav", "loaded pluck.wav", "playing chime", "playing drum", "playing chord", "playing pluck", "looping: true", "bye"]
+reject = ["panicked"]
+exits = true
+shots = [130]
+audio_peak_min = 4000
+sd_files = { "3ds/dspfirm.cdc" = "placeholder: the emulator does not run DSP firmware" }
+
+[dependencies]
+citronnade.workspace = true

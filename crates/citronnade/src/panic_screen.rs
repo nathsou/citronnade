@@ -3,7 +3,7 @@
 use core::fmt::Write;
 use core::panic::PanicInfo;
 
-use citronnade_rt::sync::SpinLock;
+use citronnade_rt::sync::Mutex as SpinLock;
 use citronnade_rt::svc;
 use citronnade_services::{gsp, hid};
 

@@ -10,10 +10,12 @@ extern crate alloc;
 
 pub mod apt;
 pub mod cfg;
+pub mod dsp;
 pub mod fs;
 pub mod gsp;
 pub mod hid;
 pub mod ipc;
+pub mod mic;
 pub mod irrst;
 pub mod ptm;
 pub mod srv;

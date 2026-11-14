@@ -7,7 +7,7 @@
 use alloc::vec::Vec;
 use core::fmt::{self, Write};
 
-use citronnade_rt::sync::SpinLock;
+use citronnade_rt::sync::Mutex as SpinLock;
 use citronnade_rt::{log, svc};
 
 use crate::font::{CELL_HEIGHT, CELL_WIDTH};

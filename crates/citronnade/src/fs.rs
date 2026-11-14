@@ -12,7 +12,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use citronnade_rt::sync::SpinLock;
+use citronnade_rt::sync::Mutex as SpinLock;
 use citronnade_services::fs as raw;
 use citronnade_services::fs::FsPath;
 use citronnade_services::ipc::Session;

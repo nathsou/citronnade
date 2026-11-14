@@ -1,0 +1,26 @@
+[package]
+name = "microphone"
+description = "Records from the microphone with a level meter, then plays it back"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.5"
+title = "Microphone"
+covers = ["mic:u", "recording", "playback"]
+
+[package.metadata.citronnade.emulator]
+frames = 320
+input = ["40-42:a", "250-252:b", "292-296:start"]
+expect = ["microphone: sampling at 16360 Hz", "recording", "recorded", "playing back", "bye"]
+reject = ["panicked"]
+exits = true
+shots = [120]
+audio_peak_min = 1000
+options = { citra_input_type = "static_noise" }
+sd_files = { "3ds/dspfirm.cdc" = "placeholder: the emulator does not run DSP firmware" }
+
+[dependencies]
+citronnade.workspace = true

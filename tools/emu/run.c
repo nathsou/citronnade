@@ -49,6 +49,8 @@ static int frame;
 static bool shutdown_requested;
 static unsigned pixel_format = RETRO_PIXEL_FORMAT_0RGB1555;
 static long audio_frames;
+static int audio_peak;
+static long audio_loud;
 
 static const struct { const char *name; unsigned id; } buttons[] = {
     {"b", RETRO_DEVICE_ID_JOYPAD_B},       {"y", RETRO_DEVICE_ID_JOYPAD_Y},
@@ -183,8 +185,17 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch) {
         if (shots[i].frame == frame) save_frame(data, w, h, pitch, shots[i].path);
 }
 
-static void audio_cb(int16_t l, int16_t r) { (void)l, (void)r, audio_frames++; }
-static size_t audio_batch_cb(const int16_t *d, size_t n) { (void)d; audio_frames += n; return n; }
+static void track_sample(int16_t v) {
+    int a = v < 0 ? -(int)v : v;
+    if (a > audio_peak) audio_peak = a;
+    if (a > 256) audio_loud++;
+}
+static void audio_cb(int16_t l, int16_t r) { track_sample(l), track_sample(r), audio_frames++; }
+static size_t audio_batch_cb(const int16_t *d, size_t n) {
+    for (size_t i = 0; i < 2 * n; i++) track_sample(d[i]);
+    audio_frames += n;
+    return n;
+}
 static void input_poll_cb(void) {}
 
 static int16_t input_state_cb(unsigned port, unsigned device, unsigned index, unsigned id) {
@@ -324,6 +335,7 @@ int main(int argc, char **argv) {
         }
     }
     printf("[harness] ran %d frames, %ld audio frames\n", frame, audio_frames);
+    printf("[harness] audio peak %d, %ld loud samples\n", audio_peak, audio_loud);
     fflush(stdout);
     p_retro_unload_game();
     p_retro_deinit();

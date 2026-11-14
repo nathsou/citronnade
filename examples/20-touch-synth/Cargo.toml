@@ -1,0 +1,25 @@
+[package]
+name = "touch-synth"
+description = "A keyboard on the bottom screen: polyphony with looping single-cycle waves, and latency measurement"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.5"
+title = "Touch Synth"
+covers = ["polyphony", "looping wave buffers", "touch input", "latency"]
+
+[package.metadata.citronnade.emulator]
+frames = 260
+input = ["touch 60-90:10,180", "touch 110-140:135,180", "150-190:a,b", "232-236:start"]
+expect = ["touch-synth: audio started", "note C4 on", "latency:", "note A4 on", "chord", "bye"]
+reject = ["panicked"]
+exits = true
+shots = [125]
+audio_peak_min = 4000
+sd_files = { "3ds/dspfirm.cdc" = "placeholder: the emulator does not run DSP firmware" }
+
+[dependencies]
+citronnade.workspace = true

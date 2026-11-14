@@ -183,7 +183,7 @@ use core::ptr;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::svc;
-use crate::sync::SpinLock;
+use crate::sync::Mutex as SpinLock;
 
 /// The allocator behind `alloc` (`Box`, `Vec`, ...).
 pub struct AppAllocator;

@@ -14,7 +14,7 @@
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 
-use citronnade_rt::sync::{Event, SpinLock};
+use citronnade_rt::sync::{Event, Mutex as SpinLock};
 use citronnade_rt::thread::{Builder, JoinHandle};
 use citronnade_rt::{env, memory, svc};
 

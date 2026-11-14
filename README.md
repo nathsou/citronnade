@@ -100,6 +100,13 @@ emulator's log.
 | 15 | [romfs-assets](examples/15-romfs-assets) | 0.4 | RomFS packed into the 3DSX, PNG decoding on the console |
 | 16 | [threads](examples/16-threads) | 0.4 | threads on both cores, `Mutex`, `Event` |
 | 17 | [timing](examples/17-timing) | 0.4 | the system tick, `Instant`, sleep accuracy, frame pacing |
+| 18 | [tone](examples/18-tone) | 0.5 | the DSP: a synthesiser streaming wave buffers |
+| 19 | [samples](examples/19-samples) | 0.5 | WAV files from the RomFS on several channels, panning, looping |
+| 20 | [touch-synth](examples/20-touch-synth) | 0.5 | polyphony with looping single-cycle waves, latency |
+| 21 | [microphone](examples/21-microphone) | 0.5 | recording from the microphone and playing it back |
+
+Audio needs the console's DSP firmware, which is not distributed: dump your
+own with the DSP1 homebrew to `/3ds/dspfirm.cdc` on the SD card.
 
 Build one with `cargo citronnade build -p hello` from the repository root.
 

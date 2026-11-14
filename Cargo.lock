@@ -88,6 +88,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "microphone"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "motion"
 version = "0.1.0"
 dependencies = [
@@ -110,6 +117,13 @@ dependencies = [
 
 [[package]]
 name = "romfs-assets"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "samples"
 version = "0.1.0"
 dependencies = [
  "citronnade",
@@ -151,7 +165,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tone"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "touch-paint"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "touch-synth"
 version = "0.1.0"
 dependencies = [
  "citronnade",

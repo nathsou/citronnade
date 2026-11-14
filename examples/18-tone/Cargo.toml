@@ -1,0 +1,25 @@
+[package]
+name = "tone"
+description = "Synthesised sine, square, sawtooth and noise, with pitch and volume on the controls"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.5"
+title = "Tone"
+covers = ["DSP", "NDSP channels", "streaming wave buffers"]
+
+[package.metadata.citronnade.emulator]
+frames = 300
+input = ["100-102:a", "160-162:a", "stick 180-220:0,30000", "270-274:start"]
+expect = ["tone: audio started", "waveform: square", "waveform: sawtooth", "audio frames:", "bye"]
+reject = ["panicked"]
+exits = true
+shots = [150]
+audio_peak_min = 4000
+sd_files = { "3ds/dspfirm.cdc" = "placeholder: the emulator does not run DSP firmware" }
+
+[dependencies]
+citronnade.workspace = true

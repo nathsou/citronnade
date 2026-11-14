@@ -25,6 +25,7 @@
 
 extern crate alloc;
 
+pub mod audio;
 pub mod console;
 pub mod font;
 pub mod fs;
@@ -32,6 +33,7 @@ pub mod gfx;
 pub mod info;
 pub mod input;
 pub mod math;
+pub mod mic;
 mod panic_screen;
 pub mod romfs;
 pub mod system;
