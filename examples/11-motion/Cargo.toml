@@ -1,0 +1,22 @@
+[package]
+name = "motion"
+description = "Tilt to roll a ball (accelerometer); rotation rates (gyroscope)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.3"
+title = "Motion"
+covers = ["accelerometer", "gyroscope"]
+
+[package.metadata.citronnade.emulator]
+frames = 150
+input = ["120-124:start"]
+expect = ["motion: sensors enabled", "accelerometer:", "bye"]
+exits = true
+shots = [90]
+
+[dependencies]
+citronnade.workspace = true

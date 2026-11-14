@@ -1,0 +1,22 @@
+[package]
+name = "touch-paint"
+description = "Paint on the bottom screen with the stylus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.3"
+title = "Touch Paint"
+covers = ["touch screen", "Surface", "thick lines"]
+
+[package.metadata.citronnade.emulator]
+frames = 230
+input = ["touch 40-60:60,60", "touch 61-80:200,120", "touch 100-104:220,228", "touch 120-140:100,150", "touch 141-160:260,60", "180-182:r", "200-204:start"]
+expect = ["touch-paint:", "stroke 1:", "colour: ", "stroke 2:", "brush: 6", "bye"]
+exits = true
+shots = [170]
+
+[dependencies]
+citronnade.workspace = true

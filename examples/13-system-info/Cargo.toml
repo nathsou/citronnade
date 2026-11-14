@@ -1,0 +1,22 @@
+[package]
+name = "system-info"
+description = "Model, region, language, user, battery, volume, Wi-Fi, versions and the clock"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.3"
+title = "System Info"
+covers = ["cfg", "ptm", "shared config page", "clock"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["90-94:start"]
+expect = ["model:", "region:", "language:", "battery:", "kernel:", "time: 20", "bye"]
+exits = true
+shots = [60]
+
+[dependencies]
+citronnade.workspace = true

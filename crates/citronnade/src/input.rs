@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use citronnade_services::hid;
+use citronnade_services::{hid, irrst};
 
 use crate::Result;
 
@@ -117,6 +117,10 @@ pub struct Input {
     repeat_interval: u32,
     repeat_count: u32,
     repeat: Buttons,
+    extra: bool,
+    motion: bool,
+    c_stick: (i16, i16),
+    gyro_scale: f32,
 }
 
 impl Input {
@@ -130,7 +134,48 @@ impl Input {
             repeat_interval: 0,
             repeat_count: 0,
             repeat: Buttons::NONE,
+            extra: false,
+            motion: false,
+            c_stick: (0, 0),
+            gyro_scale: 0.0,
         })
+    }
+
+    /// Enables the New 3DS's C-Stick and ZL/ZR (through ir:rst). Harmless on
+    /// Old 3DS, where they read as released unless a Circle Pad Pro is used.
+    pub fn enable_new3ds_controls(&mut self) -> crate::Result<()> {
+        if !self.extra {
+            irrst::init()?;
+            self.extra = true;
+        }
+        Ok(())
+    }
+
+    /// Enables the accelerometer and the gyroscope.
+    pub fn enable_motion(&mut self) -> crate::Result<()> {
+        if !self.motion {
+            hid::enable_accelerometer()?;
+            hid::enable_gyroscope()?;
+            self.gyro_scale = hid::gyroscope_raw_to_dps().unwrap_or(0.0);
+            self.motion = true;
+        }
+        Ok(())
+    }
+
+    /// The accelerometer (raw units; about 512 per g).
+    pub fn accelerometer(&self) -> (i16, i16, i16) {
+        self.raw.accel
+    }
+
+    /// Angular rates around the x, y and z axes, in degrees per second.
+    pub fn gyroscope(&self) -> (f32, f32, f32) {
+        let (x, y, z) = self.raw.gyro;
+        (x as f32 * self.gyro_scale, y as f32 * self.gyro_scale, z as f32 * self.gyro_scale)
+    }
+
+    /// The C-Stick position (New 3DS), roughly -156..156.
+    pub fn c_stick(&self) -> (i16, i16) {
+        self.c_stick
     }
 
     /// Reads the current state. Call once per frame.
@@ -138,6 +183,11 @@ impl Input {
         self.previous = self.held;
         self.raw = hid::read();
         let mut held = Buttons(self.raw.buttons);
+        if self.extra {
+            let (bits, stick) = irrst::read();
+            held = held | Buttons(bits);
+            self.c_stick = stick;
+        }
         if self.raw.touch.is_some() {
             held = held | Buttons::TOUCH;
         }
@@ -202,6 +252,13 @@ impl Input {
 
 impl Drop for Input {
     fn drop(&mut self) {
+        if self.motion {
+            let _ = hid::disable_accelerometer();
+            let _ = hid::disable_gyroscope();
+        }
+        if self.extra {
+            irrst::exit();
+        }
         hid::exit();
     }
 }

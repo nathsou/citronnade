@@ -442,6 +442,45 @@ impl<'a> Canvas<'a> {
         }
     }
 
+    /// Copies a surface onto the canvas (a memory copy when the width and
+    /// format match).
+    pub fn draw_surface(&mut self, surface: &Surface) {
+        if surface.width == self.width && surface.format == self.format {
+            unsafe { core::ptr::copy_nonoverlapping(surface.data.as_ptr(), self.ptr, surface.data.len()) };
+            return;
+        }
+        let bpp = surface.format.bytes_per_pixel();
+        for x in 0..surface.width.min(self.width) {
+            for y in 0..240 {
+                let o = (x as usize * 240 + (239 - y as usize)) * bpp;
+                let c = surface.format.decode(&surface.data[o..o + bpp]);
+                self.set(x as i32, y as i32, c.with_alpha(255));
+            }
+        }
+    }
+
+    /// Draws a thick line (a disc stamped along it).
+    pub fn thick_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, radius: i32, c: Color) {
+        let (dx, dy) = ((x1 - x0).abs(), -(y1 - y0).abs());
+        let (sx, sy) = (if x0 < x1 { 1 } else { -1 }, if y0 < y1 { 1 } else { -1 });
+        let (mut x, mut y, mut err) = (x0, y0, dx + dy);
+        loop {
+            self.fill_circle(x, y, radius, c);
+            if x == x1 && y == y1 {
+                break;
+            }
+            let e2 = 2 * err;
+            if e2 >= dy {
+                err += dy;
+                x += sx;
+            }
+            if e2 <= dx {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
     /// Draws an RGBA8 image (row-major) with alpha blending.
     pub fn blit(&mut self, x: i32, y: i32, w: u32, h: u32, rgba: &[u8]) {
         for iy in 0..h {
@@ -508,6 +547,38 @@ fn isqrt(n: u32) -> u32 {
         y = (x + n / x) / 2;
     }
     x
+}
+
+/// The 3D slider's position, 0.0 (off) to 1.0.
+pub fn slider_3d() -> f32 {
+    f32::from_bits(citronnade_rt::memory::read_config_u32(citronnade_rt::memory::SHARED_CONFIG + 0x80)).clamp(0.0, 1.0)
+}
+
+/// An off-screen image in framebuffer layout, drawn with a [`Canvas`] and
+/// copied to a screen quickly with [`Canvas::draw_surface`].
+pub struct Surface {
+    width: u32,
+    format: Format,
+    data: Vec<u8>,
+}
+
+impl Surface {
+    /// A surface as wide as a screen (400 or 320) and 240 tall.
+    pub fn new(width: u32, format: Format) -> Surface {
+        Surface { width, format, data: alloc::vec![0; width as usize * 240 * format.bytes_per_pixel()] }
+    }
+
+    pub fn canvas(&mut self) -> Canvas<'_> {
+        unsafe { Canvas::from_raw(self.data.as_mut_ptr(), self.width, self.format) }
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn format(&self) -> Format {
+        self.format
+    }
 }
 
 /// The top screen's layout.

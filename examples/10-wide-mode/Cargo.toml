@@ -1,0 +1,22 @@
+[package]
+name = "wide-mode"
+description = "The top screen at 800x240 (pixels half as wide)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.3"
+title = "Wide Mode"
+covers = ["wide top screen", "model detection"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["90-94:start"]
+expect = ["wide-mode:", "bye"]
+exits = true
+shots = [60]
+
+[dependencies]
+citronnade.workspace = true

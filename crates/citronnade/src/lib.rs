@@ -28,6 +28,7 @@ extern crate alloc;
 pub mod console;
 pub mod font;
 pub mod gfx;
+pub mod info;
 pub mod input;
 pub mod math;
 mod panic_screen;
@@ -36,7 +37,7 @@ pub mod system;
 pub use citronnade_macros::main;
 pub use citronnade_rt::{at_exit, exit, log, set_panic_hook, PanicHook};
 pub use console::Console;
-pub use gfx::{Canvas, Color, Format, Image, Screen, Screens, TopMode};
+pub use gfx::{slider_3d, Canvas, Color, Format, Image, Screen, Screens, Surface, TopMode};
 pub use input::{Buttons, Input};
 pub use system::{Apt, Flow, Gsp, Hid, Hook, System};
 
@@ -95,6 +96,77 @@ pub mod time {
     /// Sleeps the current thread.
     pub fn sleep(duration: core::time::Duration) {
         svc::sleep_thread(duration.as_nanos().min(i64::MAX as u128) as i64);
+    }
+
+    /// A calendar date and time (the console's clock, local time).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct DateTime {
+        pub year: u16,
+        pub month: u8,
+        pub day: u8,
+        pub hour: u8,
+        pub minute: u8,
+        pub second: u8,
+        pub millisecond: u16,
+        /// 0 = Monday.
+        pub weekday: u8,
+    }
+
+    /// Milliseconds since 1 January 1900 on the console's clock.
+    pub fn clock_millis() -> u64 {
+        use citronnade_rt::memory::{read_config_u32, SHARED_CONFIG};
+        let read64 = |o: u32| read_config_u32(SHARED_CONFIG + o) as u64 | (read_config_u32(SHARED_CONFIG + o + 4) as u64) << 32;
+        // The time reference is double buffered: re-read until stable.
+        let (mut value_ms, mut value_tick, mut hz, mut drift);
+        loop {
+            let counter = read_config_u32(SHARED_CONFIG);
+            let base = 0x20 + 0x20 * (counter & 1);
+            value_ms = read64(base);
+            value_tick = read64(base + 8);
+            hz = read64(base + 16) as i64;
+            drift = read64(base + 24) as i64;
+            if read_config_u32(SHARED_CONFIG) == counter {
+                break;
+            }
+        }
+        let hz = if hz > 0 { hz } else { TICKS_PER_SECOND as i64 };
+        let elapsed_ticks = ticks() as i64 - value_tick as i64;
+        let mut elapsed_ms = elapsed_ticks * 1000 / hz;
+        const HOUR: i64 = 3_600_000;
+        if drift != 0 && elapsed_ms < HOUR {
+            elapsed_ms += drift * (HOUR - elapsed_ms) / HOUR;
+        }
+        (value_ms as i64 + elapsed_ms) as u64
+    }
+
+    /// The console's current date and time.
+    pub fn now() -> DateTime {
+        let ms = clock_millis();
+        let days = ms / 86_400_000;
+        let in_day = ms % 86_400_000;
+        // Days since 1900-01-01 to a civil date (1900-01-01 was a Monday).
+        // 1900-01-01 is 25,567 days before 1970-01-01; the civil-from-days
+        // algorithm counts from 0000-03-01, 719,468 days before 1970.
+        let z = days as i64 - 25_567 + 719_468;
+        let era = z.div_euclid(146_097);
+        let doe = z - era * 146_097;
+        let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+        let y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let d = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+        let y = if m <= 2 { y + 1 } else { y };
+        DateTime {
+            year: y as u16,
+            month: m as u8,
+            day: d as u8,
+            hour: (in_day / 3_600_000) as u8,
+            minute: (in_day / 60_000 % 60) as u8,
+            second: (in_day / 1000 % 60) as u8,
+            millisecond: (in_day % 1000) as u16,
+            weekday: (days % 7) as u8,
+        }
     }
 }
 

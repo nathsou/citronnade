@@ -1,0 +1,23 @@
+[package]
+name = "new3ds-inputs"
+description = "The New 3DS's C-Stick and ZL/ZR, with model detection"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.3"
+title = "New 3DS Inputs"
+covers = ["ir:rst", "C-Stick", "ZL/ZR", "model detection"]
+
+[package.metadata.citronnade.emulator]
+frames = 160
+input = ["40-50:zl", "60-70:zr", "130-134:start"]
+expect = ["new3ds-inputs: model", "down: [ZL]", "down: [ZR]", "bye"]
+exits = true
+shots = [45]
+options = { citra_is_new_3ds = "enabled" }
+
+[dependencies]
+citronnade.workspace = true

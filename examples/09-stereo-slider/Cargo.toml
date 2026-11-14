@@ -1,0 +1,23 @@
+[package]
+name = "stereo-slider"
+description = "A layered scene in stereoscopic 3D whose depth follows the 3D slider"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.3"
+title = "Stereo Slider"
+covers = ["stereo top screen", "3D slider", "parallax"]
+
+[package.metadata.citronnade.emulator]
+frames = 150
+input = ["120-124:start"]
+expect = ["stereo-slider:", "slider: 1.00", "bye"]
+exits = true
+shots = [90]
+options = { citra_render_3d = "side-by-side", citra_factor_3d = "100" }
+
+[dependencies]
+citronnade.workspace = true

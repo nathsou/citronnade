@@ -87,7 +87,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "motion"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "new3ds-inputs"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "panic"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "stereo-slider"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "system-info"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "touch-paint"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "wide-mode"
 version = "0.1.0"
 dependencies = [
  "citronnade",

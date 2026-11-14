@@ -90,6 +90,12 @@ emulator's log.
 | 05 | [buttons](examples/05-buttons) | 0.2 | buttons, the Circle Pad, presses and releases |
 | 06 | [lifecycle](examples/06-lifecycle) | 0.2 | HOME, sleep, the power button and exit (APT) |
 | 07 | [canvas-2d](examples/07-canvas-2d) | 0.2 | software 2D: sprites, alpha blending, frame timing |
+| 08 | [touch-paint](examples/08-touch-paint) | 0.3 | the touch screen, off-screen surfaces, thick lines |
+| 09 | [stereo-slider](examples/09-stereo-slider) | 0.3 | the stereoscopic top screen and the 3D slider |
+| 10 | [wide-mode](examples/10-wide-mode) | 0.3 | the 800x240 wide top screen, model detection |
+| 11 | [motion](examples/11-motion) | 0.3 | the accelerometer and gyroscope |
+| 12 | [new3ds-inputs](examples/12-new3ds-inputs) | 0.3 | the C-Stick and ZL/ZR (ir:rst) |
+| 13 | [system-info](examples/13-system-info) | 0.3 | model, region, language, power, volume, Wi-Fi, versions, the clock |
 
 Build one with `cargo citronnade build -p hello` from the repository root.
 
