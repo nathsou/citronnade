@@ -1,0 +1,9 @@
+/target
+**/target
+*.3dsx
+*.smdh
+*.elf
+# never commit game ROMs or anything extracted from them
+*.nes
+*.3ds
+*.cia
