@@ -41,13 +41,19 @@ AZAHAR_LIBRETRO=/path/to/azahar_libretro.so tools/emu/check.py
 `check.py` builds the examples, runs each one and compares its log with the
 `[package.metadata.citronnade.emulator]` table in its `Cargo.toml`. Logs go
 to `target/emu-logs/`, screenshots to `target/emu-shots/`. Pass example names
-to run some of them, and `--release` for optimised builds.
+to run some of them, and `--release` for optimised builds. With `--cia`,
+each example is also packaged as a CIA, installed with Azahar's own
+installer (`emu-run --install FILE.cia:TITLEID` calls it once the core
+runs, and prints where the title's content went), and the installed title
+is checked instead of the 3DSX.
 
 To run a program by hand:
 
 ```bash
 target/emu-run --frames 300 --press 60-70:a --shot 120:shot.ppm program.3dsx
 ```
+
+It runs `.cxi` files (installable titles' NCCHs) too.
 
 ## Network examples
 

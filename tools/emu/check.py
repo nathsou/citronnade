@@ -15,8 +15,11 @@ Each example declares its check in Cargo.toml:
     host_servers = true               # start tools/net/hostservers.py's servers on 127.0.0.1
     host_expect = ["hello"]           # text the stdio sink (TCP 7779) must receive, in order
 
-Usage: tools/emu/check.py [example-name ...] [--release] [--no-build]
+Usage: tools/emu/check.py [example-name ...] [--release] [--no-build] [--cia]
 Needs target/emu-run (tools/emu/build.sh) and AZAHAR_LIBRETRO.
+
+With --cia, each example is packaged as a CIA too, installed with Azahar's
+own installer, and the installed title is checked instead of the 3DSX.
 """
 
 import os
@@ -56,11 +59,29 @@ def examples():
         yield manifest.parent, pkg["name"], meta
 
 
-def run_example(name, meta, profile):
+def install_cia(name, profile):
+    """Installs the example's CIA in the emulator; returns the installed
+    content's path, or an error."""
+    out = ROOT / "target" / "armv6k-nintendo-3ds" / profile
+    cia = (out / f"{name}.cia").read_bytes()
+    # the TMD's title ID: header, certificate chain and ticket, each on 0x40
+    align = lambda x: (x + 0x3F) & ~0x3F
+    sizes = [int.from_bytes(cia[o:o + 4], "little") for o in (0, 8, 12)]
+    tmd = align(align(align(sizes[0]) + sizes[1]) + sizes[2])
+    title = cia[tmd + 0x140 + 0x4C:tmd + 0x140 + 0x54].hex()
+    proc = subprocess.run([str(EMU), "--frames", "2", "--install", f"{out / name}.cia:{title}", str(out / f"{name}.cxi")],
+                          capture_output=True, text=True, timeout=600)
+    found = re.search(r"\[harness\] content 0 of \w+: (.*)", proc.stdout)
+    if not found:
+        return None, "the CIA did not install: " + " ".join(l for l in proc.stdout.splitlines() if "[harness]" in l)
+    return found.group(1), None
+
+
+def run_example(name, meta, profile, program=None):
     check = meta.get("emulator")
     if check is None:
         return None, "no emulator check declared"
-    program = ROOT / "target" / "armv6k-nintendo-3ds" / profile / f"{name}.3dsx"
+    program = program or ROOT / "target" / "armv6k-nintendo-3ds" / profile / f"{name}.3dsx"
     cmd = [str(EMU), "--frames", str(check.get("frames", 90))]
     for item in check.get("input", []):
         kind, _, spec = item.rpartition(" ")
@@ -135,6 +156,7 @@ def main():
     args = sys.argv[1:]
     profile = "release" if "--release" in args else "debug"
     build = "--no-build" not in args
+    cia = "--cia" in args
     wanted = [a for a in args if not a.startswith("--")]
     if not EMU.exists():
         sys.exit("target/emu-run is missing: run tools/emu/build.sh")
@@ -146,13 +168,22 @@ def main():
         cmd = ["cargo", "run", "-q", "-p", "cargo-citronnade", "--", "build"]
         if profile == "release":
             cmd.append("--release")
+        if cia:
+            cmd.append("--cia")
         for _, name, _ in selected:
             cmd += ["-p", name]
         subprocess.run(cmd, cwd=ROOT, check=True)
 
     failures = 0
     for directory, name, meta in selected:
-        lines, problems = run_example(name, meta, profile)
+        program = None
+        if cia and meta.get("emulator") is not None:
+            program, error = install_cia(name, profile)
+            if error:
+                failures += 1
+                print(f"FAIL {directory.name}\n     {error}")
+                continue
+        lines, problems = run_example(name, meta, profile, program)
         if lines is None:
             print(f"SKIP {directory.name}: {problems}")
             continue

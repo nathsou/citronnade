@@ -30,6 +30,13 @@ a console running the Homebrew Launcher (press Y there to start receiving):
 cargo citronnade run --release
 ```
 
+To install it on the HOME Menu instead, package it as a CIA too (see
+[installable titles](docs/guide.md#installable-titles)):
+
+```bash
+cargo citronnade build --release --cia
+```
+
 A program looks like this:
 
 ```rust
@@ -86,12 +93,14 @@ emulator's log.
   reports errors at the shader's line.
 - `citronnade-assets`: build-script conversions: PNG images to tiled
   textures (`.ctex`), OBJ models to meshes (`.cmsh`).
-- `citronnade-formats`: ELF to 3DSX conversion, SMDH, zlib and PNG, shared
-  by the host tool and programs.
+- `citronnade-formats`: ELF to 3DSX conversion, SMDH, zlib and PNG, RomFS,
+  and installable titles (NCCH and CIA), shared by the host tool and
+  programs.
 - `cargo-citronnade`: builds, packages each binary as a `.3dsx` with its
   SMDH (title, description, author and icon from
   `[package.metadata.citronnade]`) and RomFS (the `romfs` directory named
-  there), and uploads it with the 3dslink protocol.
+  there), and uploads it with the 3dslink protocol; with `--cia`, also as
+  an installable `.cia`.
 
 ## Examples
 

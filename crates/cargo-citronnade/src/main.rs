@@ -23,6 +23,7 @@ Usage: cargo citronnade <command> [options] [cargo options]
 
 Commands:
   build              Build for the 3DS and package each binary as a .3dsx
+                     (--cia: also as an installable .cia, and its .cxi)
   run                Build, then send the .3dsx to the Homebrew Launcher (3dslink)
   link <file.3dsx>   Send an existing .3dsx to the Homebrew Launcher
   test               Build, send each package with a console test, and check

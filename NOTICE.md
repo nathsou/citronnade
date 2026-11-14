@@ -21,6 +21,16 @@ original licences ask for this acknowledgement:
 - **picasso** (<https://github.com/devkitPro/picasso>), MIT licence: the
   shader language that `citronnade-shader` assembles, and its padding and
   register allocation rules.
+- **makerom** (<https://github.com/3DSGuy/Project_CTR>), MIT licence,
+  copyright 3DSGuy, applestash and Jakcron: the NCCH, ExeFS, IVFC, ticket,
+  TMD and CIA layouts that `citronnade-formats` writes (`ncch.rs`,
+  `cia.rs`), and the CIA certificate chain (`cia_certificates.bin`: the
+  retail CA00000003, XS0000000c and CP0000000b certificates, which are
+  public and which every CIA carries; no key of any kind is included).
+- **buildtools** (<https://github.com/Steveice10/buildtools>), MIT
+  licence, copyright Steveice10: the access control that `ncch.rs` gives a
+  title (its system calls, services, dependencies and flags) is that of its
+  homebrew `template.rsf`.
 
 The zlib licence's conditions: the origin of the software must not be
 misrepresented, altered versions must be plainly marked as such, and the

@@ -16,10 +16,14 @@ pub struct Built {
 
 /// Runs `cargo <subcommand>` for the 3DS with `args`, then packages every
 /// executable it produced. Returns the packaged programs.
+/// With `--cia` among `args`, each program is also packaged as an
+/// installable title (`.cia`, and the `.cxi` inside it).
 pub fn build(tc: &Toolchain, subcommand: &str, args: &[String]) -> Result<Vec<Built>, String> {
+    let cia = args.iter().any(|a| a == "--cia");
+    let args: Vec<String> = args.iter().filter(|a| *a != "--cia").cloned().collect();
     let packages = package::load(&tc.cargo)?;
     let mut cmd = tc.cargo_command(subcommand);
-    cmd.arg("--message-format=json-render-diagnostics").args(args);
+    cmd.arg("--message-format=json-render-diagnostics").args(&args);
     cmd.stdout(Stdio::piped()).stderr(Stdio::inherit());
     let mut child = cmd.spawn().map_err(|e| format!("could not run cargo: {e}"))?;
     let stdout = child.stdout.take().unwrap();
@@ -60,6 +64,16 @@ pub fn build(tc: &Toolchain, subcommand: &str, args: &[String]) -> Result<Vec<Bu
             layout.bss.div_ceil(1024),
             layout.absolute_relocations + layout.relative_relocations
         );
+        if cia {
+            let out = package::package_cia(&elf, info, romfs.as_deref())?;
+            eprintln!(
+                "    Packaged {} (title {:016X}, {} KiB; {} for emulators)",
+                out.cia.display(),
+                out.title_id,
+                out.size.div_ceil(1024),
+                out.cxi.file_name().unwrap_or_default().to_string_lossy()
+            );
+        }
         built.push(Built { dsx, info: info.clone() });
     }
     Ok(built)

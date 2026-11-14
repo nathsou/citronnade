@@ -17,6 +17,7 @@ examples that show it working; they are the most complete reference.
 - [Applets and cameras](#applets-and-cameras)
 - [Threads and time](#threads-and-time)
 - [The tool](#the-tool)
+- [Installable titles](#installable-titles)
 - [On hardware](#on-hardware)
 
 ## Programs
@@ -263,13 +264,37 @@ thread waiting on a low-priority one does not spin. `time::Instant` and
 
 - `cargo citronnade build [--release] [-p name]` builds and packages each
   binary as a `.3dsx` with its SMDH (title, description, author and icon
-  from `[package.metadata.citronnade]`) and RomFS.
+  from `[package.metadata.citronnade]`) and RomFS. With `--cia` it also
+  packages an installable title: a `.cia` (for FBI or another installer)
+  and the `.cxi` inside it (which emulators run directly).
 - `cargo citronnade run [-p name] [--server]` sends it to the Homebrew
   Launcher's netloader (Y); `--server` shows the program's output.
 - `cargo citronnade test` sends each program with a console test and checks
   its output.
 - `cargo citronnade new <path>` starts a project; any other command (check,
   clippy, doc) runs cargo for the 3DS.
+
+## Installable titles
+
+A `.cia` installs the program on the HOME Menu like any title. It is the
+same program as the `.3dsx`: the runtime notices that no homebrew loader
+started it, reads its RomFS from the title, and closes through the system
+when it ends. `[package.metadata.citronnade]` can set:
+
+```toml
+[package.metadata.citronnade]
+unique_id = "0xF8123"          # the title ID's 20 bits (default: from the name)
+product_code = "CTR-H-LEMN"    # default: CTR-H- and the name's first letters
+banner = "banner.bnr"          # a HOME Menu banner (made with bannertool)
+new3ds_speedup = true          # start at 804 MHz with the L2 cache
+new3ds_memory = "124MB"        # "legacy" (default), "124MB" or "178MB"
+```
+
+The title version comes from the package's version. Without a banner the
+HOME Menu shows the title with its icon only. Nothing is signed, so
+consoles install these titles with signature checks patched, as custom
+firmware such as Luma3DS does; give each program its own `unique_id` so
+titles do not replace each other.
 
 ## On hardware
 

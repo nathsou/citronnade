@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use citronnade_formats::{dsx, png, smdh};
+use citronnade_formats::{cia, dsx, ncch, png, smdh};
 
 use crate::json::{self, Value};
 
@@ -18,6 +18,15 @@ pub struct PackageInfo {
     pub author: Option<String>,
     pub icon: Option<PathBuf>,
     pub romfs: Option<PathBuf>,
+    /// The package's version (`major.minor.patch`).
+    pub version: Option<String>,
+    /// For a CIA: the title's unique ID (20 bits), its product code, its
+    /// HOME Menu banner (a `.bnr`) and its New 3DS settings.
+    pub unique_id: Option<u32>,
+    pub product_code: Option<String>,
+    pub banner: Option<PathBuf>,
+    pub new3ds_speedup: bool,
+    pub new3ds_memory: Option<String>,
     /// What `cargo citronnade test` checks in the program's output.
     pub test: Option<TestSpec>,
 }
@@ -85,6 +94,15 @@ pub fn load(cargo: &Path) -> Result<HashMap<String, PackageInfo>, String> {
                 author: meta.and_then(|m| m.str("author")).map(String::from).or(author),
                 icon: path("icon"),
                 romfs: path("romfs"),
+                version: p.str("version").map(String::from),
+                unique_id: meta.and_then(|m| m.get("unique_id")).and_then(|v| match v.as_str() {
+                    Some(s) => u32::from_str_radix(s.trim_start_matches("0x").trim_start_matches("0X"), 16).ok(),
+                    None => v.as_f64().map(|f| f as u32),
+                }),
+                product_code: meta.and_then(|m| m.str("product_code")).map(String::from),
+                banner: path("banner"),
+                new3ds_speedup: meta.and_then(|m| m.get("new3ds_speedup")).and_then(Value::as_bool).unwrap_or(false),
+                new3ds_memory: meta.and_then(|m| m.str("new3ds_memory")).map(String::from),
             },
         );
     }
@@ -125,4 +143,72 @@ pub fn package(elf: &Path, info: &PackageInfo, romfs: Option<&[u8]>) -> Result<(
     std::fs::write(&path, out).map_err(|e| format!("could not write {}: {e}", path.display()))?;
     std::fs::write(elf.with_extension("smdh"), smdh).map_err(|e| format!("could not write the SMDH: {e}"))?;
     Ok((path, layout))
+}
+
+/// A title version from a package version: major << 10 | minor << 4 | patch.
+fn title_version(version: Option<&str>) -> u16 {
+    let mut parts = version.unwrap_or("0.0.0").split(['.', '-', '+']).map(|p| p.parse::<u16>().unwrap_or(0));
+    let (major, minor, patch) = (parts.next().unwrap_or(0), parts.next().unwrap_or(0), parts.next().unwrap_or(0));
+    (major.min(63) << 10) | (minor.min(63) << 4) | patch.min(15)
+}
+
+/// What packaging a CIA made.
+pub struct CiaOutput {
+    pub cia: PathBuf,
+    pub cxi: PathBuf,
+    pub title_id: u64,
+    pub size: usize,
+}
+
+/// Packages an ELF as an installable title: a `.cxi` (an NCCH, which
+/// emulators run) and a `.cia` holding it, next to the ELF.
+pub fn package_cia(elf: &Path, info: &PackageInfo, romfs: Option<&[u8]>) -> Result<CiaOutput, String> {
+    let data = std::fs::read(elf).map_err(|e| format!("could not read {}: {e}", elf.display()))?;
+    let binary = elf.file_stem().and_then(|s| s.to_str()).unwrap_or("program");
+    let smdh = make_smdh(info, binary)?;
+    let banner = match &info.banner {
+        Some(path) => Some(std::fs::read(path).map_err(|e| format!("could not read the banner {}: {e}", path.display()))?),
+        None => None,
+    };
+    let unique_id = info.unique_id.unwrap_or_else(|| ncch::default_unique_id(&info.name));
+    let title_id = ncch::application_title_id(unique_id);
+    let product_code = info.product_code.clone().unwrap_or_else(|| ncch::default_product_code(&info.name));
+    let name: String = info.name.chars().filter(char::is_ascii).take(8).collect();
+    let memory = match info.new3ds_memory.as_deref() {
+        None | Some("legacy") | Some("Legacy") => ncch::New3dsMemory::Legacy,
+        Some("124MB") => ncch::New3dsMemory::Mb124,
+        Some("178MB") => ncch::New3dsMemory::Mb178,
+        Some(other) => return Err(format!("new3ds_memory is \"legacy\", \"124MB\" or \"178MB\", not \"{other}\"")),
+    };
+    let version = title_version(info.version.as_deref());
+    let image = ncch::build(&ncch::Program {
+        title_id,
+        product_code: &product_code,
+        name: &name,
+        version,
+        elf: &data,
+        stack_size: 0x10000,
+        icon: &smdh,
+        banner: banner.as_deref(),
+        romfs,
+        new3ds_speedup: info.new3ds_speedup,
+        new3ds_memory: memory,
+    })
+    .map_err(|e| format!("{}: {e}", elf.display()))?;
+    let cia_bytes = cia::build(&image, title_id, version, &smdh);
+    let cxi = elf.with_extension("cxi");
+    let cia = elf.with_extension("cia");
+    std::fs::write(&cxi, &image).map_err(|e| format!("could not write {}: {e}", cxi.display()))?;
+    std::fs::write(&cia, &cia_bytes).map_err(|e| format!("could not write {}: {e}", cia.display()))?;
+    Ok(CiaOutput { cia, cxi, title_id, size: cia_bytes.len() })
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn title_versions() {
+        assert_eq!(super::title_version(Some("1.2.3")), 1 << 10 | 2 << 4 | 3);
+        assert_eq!(super::title_version(Some("0.1.0-beta")), 1 << 4);
+        assert_eq!(super::title_version(None), 0);
+    }
 }

@@ -15,6 +15,8 @@
 //   --option KEY=VALUE         a core option (citra_...)
 //   --data DIR                 system/save directory (default target/emu-data)
 //   --until-exit               stop when the program exits (default: keep running)
+//   --install FILE.cia[:TITLEID]  install a CIA with Azahar's installer once the
+//                              core runs (then print the installed content's path)
 
 #define _GNU_SOURCE
 #include <dlfcn.h>
@@ -33,6 +35,9 @@ typedef struct { int from, to; unsigned mask; } Press;
 typedef struct { int from, to; int x, y; } Point;
 typedef struct { int frame; const char *path; } Shot;
 typedef struct { char *key; char *value; } Option;
+
+int emu_install_cia(void *core, const char *path, unsigned long long title_id); // install.cpp
+static const char *install;
 
 static Press presses[64];
 static int npresses;
@@ -262,6 +267,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(a, "--frames") && v) frames = atoi(v), i++;
         else if (!strcmp(a, "--data") && v) data_dir = v, i++;
         else if (!strcmp(a, "--until-exit")) until_exit = true;
+        else if (!strcmp(a, "--install") && v) install = v, i++;
         else if (!strcmp(a, "--shot") && v) {
             char *colon = strchr(v, ':');
             if (!colon) die("--shot F:path");
@@ -326,6 +332,14 @@ int main(int argc, char **argv) {
     p_retro_get_system_av_info(&av);
     printf("[harness] running %s: %ux%u at %.2f fps\n", program, av.geometry.base_width,
            av.geometry.base_height, av.timing.fps);
+    if (install) {
+        p_retro_run(); // the system is up after the first frame
+        char *path = strdup(install), *colon = strrchr(path, ':');
+        unsigned long long title = 0;
+        if (colon) *colon = 0, title = strtoull(colon + 1, NULL, 16);
+        int failed = emu_install_cia(lib, path, title);
+        if (failed) return 1;
+    }
 
     for (frame = 0; frame < frames; frame++) {
         p_retro_run();
