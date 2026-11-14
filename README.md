@@ -152,6 +152,15 @@ Azahar's software renderer, which the headless checks use, ignores texture
 filtering (it always samples the nearest texel), so example 24's linear
 filtering only shows on hardware or with a hardware renderer.
 
+## In use
+
+[nathsou/smb](https://github.com/nathsou/smb/tree/3ds/platforms/3ds) (branch
+`3ds`) runs its statically recompiled NES game on the 3DS with Citronnade:
+the generated C is compiled by clang and linked into a Citronnade program,
+and the game's level data places each part of the picture at its own depth
+on the stereoscopic screen. The ROM, and so the built program, stay with
+the user.
+
 ## Testing
 
 Host tests: `cargo test`. The examples run headless in Azahar's libretro

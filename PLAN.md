@@ -382,6 +382,11 @@ ipc! {
 
 ## End goal: the SMB port
 
+Status: phases 1 to 5 are done on smb's `3ds` branch (`platforms/3ds/`),
+checked in Azahar. The layers are drawn by the GPU (four planes: scenery,
+playfield, status bar, sprites) with integer parallax, and the desktop
+`--layers` view and the replay of the golden trace on hardware remain.
+
 The port lives in **smb**, at `platforms/3ds/`, next to the desktop and web
 front ends. It's mostly smb's own code: the generated game, the C runtime and
 the map's names. Its depth layers come from the game's level data, which the
