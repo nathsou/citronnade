@@ -1,0 +1,10 @@
+[package]
+name = "cargo-citronnade"
+description = "Build, package and run Nintendo 3DS homebrew written with Citronnade"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+citronnade-formats.workspace = true

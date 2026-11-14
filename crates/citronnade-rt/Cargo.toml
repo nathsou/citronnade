@@ -1,0 +1,10 @@
+[package]
+name = "citronnade-rt"
+description = "Startup code, memory and system calls for Nintendo 3DS homebrew"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+links = "citronnade-rt"
+
+[dependencies]

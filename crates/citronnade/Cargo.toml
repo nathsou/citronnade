@@ -1,0 +1,12 @@
+[package]
+name = "citronnade"
+description = "Nintendo 3DS homebrew in Rust, without devkitPro"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "../../README.md"
+
+[dependencies]
+citronnade-rt.workspace = true
+citronnade-macros.workspace = true

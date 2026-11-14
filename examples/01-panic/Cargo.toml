@@ -1,0 +1,21 @@
+[package]
+name = "panic"
+description = "Panics on purpose: the message and location are logged and the program exits cleanly"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.1"
+title = "Panic"
+covers = ["panic handler", "exit hooks"]
+
+[dependencies]
+citronnade.workspace = true
+
+[package.metadata.citronnade.emulator]
+frames = 60
+expect = ["reading values[7]", "panicked at", "index out of bounds", "exit hook ran after the panic"]
+reject = ["unreachable"]
+exits = true

@@ -1,0 +1,21 @@
+[package]
+name = "hello"
+description = "Logs a greeting, the program's arguments and its heaps, then exits"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.1"
+title = "Hello"
+covers = ["startup", "3DSX", "SMDH", "log!", "args", "exit"]
+
+[dependencies]
+citronnade.workspace = true
+
+[package.metadata.citronnade.emulator]
+frames = 60
+expect = ["Hello from Citronnade!", "application heap:", "linear heap:", "goodbye"]
+reject = ["panicked"]
+exits = true

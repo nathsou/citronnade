@@ -1,0 +1,12 @@
+[package]
+name = "citronnade-macros"
+description = "Procedural macros for Citronnade (#[citronnade::main])"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]

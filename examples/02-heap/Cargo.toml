@@ -1,0 +1,21 @@
+[package]
+name = "heap"
+description = "Exercises both heaps: alloc collections, linear memory and running out of memory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.1"
+title = "Heap"
+covers = ["global allocator", "linear heap", "allocation failure"]
+
+[dependencies]
+citronnade.workspace = true
+
+[package.metadata.citronnade.emulator]
+frames = 90
+expect = ["word counts:", "0 KiB used", "linear block at", "512 MiB is too much", "heap checks passed"]
+reject = ["main returned an error", "panicked"]
+exits = true

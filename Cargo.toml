@@ -1,0 +1,29 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "examples/*"]
+# Plain `cargo build` / `cargo test` build the host crates only; the 3DS crates
+# and examples are built with `cargo citronnade build`.
+default-members = ["crates/citronnade-formats", "crates/cargo-citronnade"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/nathsou/citronnade"
+
+[workspace.dependencies]
+citronnade = { path = "crates/citronnade", version = "0.1.0" }
+citronnade-rt = { path = "crates/citronnade-rt", version = "0.1.0" }
+citronnade-macros = { path = "crates/citronnade-macros", version = "0.1.0" }
+citronnade-formats = { path = "crates/citronnade-formats", version = "0.1.0" }
+
+[profile.dev]
+panic = "abort"
+opt-level = 1
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+lto = true
+codegen-units = 1
+debug = 1
