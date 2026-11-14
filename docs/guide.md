@@ -271,6 +271,12 @@ thread waiting on a low-priority one does not spin. `time::Instant` and
   Launcher's netloader (Y); `--server` shows the program's output.
 - `cargo citronnade test` sends each program with a console test and checks
   its output.
+- `cargo citronnade serve [-p name] [--release]` builds each binary as a
+  `.cia`, serves it over HTTP on the local network and shows a QR code of
+  its address: in FBI, Remote Install > Scan QR Code installs it.
+  `--port` (default 8000) and `--address` (this computer's, found by
+  default) adjust the address. `cargo citronnade qr <text>` shows any QR
+  code.
 - `cargo citronnade new <path>` starts a project; any other command (check,
   clippy, doc) runs cargo for the 3DS.
 
@@ -290,7 +296,8 @@ new3ds_speedup = true          # start at 804 MHz with the L2 cache
 new3ds_memory = "124MB"        # "legacy" (default), "124MB" or "178MB"
 ```
 
-The title version comes from the package's version. Without a banner the
+`cargo citronnade serve` sends a title to a console without copying files
+(see [the tool](#the-tool)). The title version comes from the package's version. Without a banner the
 HOME Menu shows the title with its icon only. Nothing is signed, so
 consoles install these titles with signature checks patched, as custom
 firmware such as Luma3DS does; give each program its own `unique_id` so

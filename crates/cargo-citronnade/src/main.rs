@@ -7,7 +7,9 @@ mod json;
 mod link;
 mod new;
 mod package;
+mod qr;
 mod romfs;
+mod serve;
 mod toolchain;
 
 use std::net::Ipv4Addr;
@@ -26,6 +28,10 @@ Commands:
                      (--cia: also as an installable .cia, and its .cxi)
   run                Build, then send the .3dsx to the Homebrew Launcher (3dslink)
   link <file.3dsx>   Send an existing .3dsx to the Homebrew Launcher
+  serve              Build each binary as a .cia, serve it over HTTP on this
+                     network and show a QR code for FBI (Remote Install >
+                     Scan QR Code)
+  qr <text> [--svg <file>]  Show a QR code of the text (a URL for FBI, say)
   test               Build, send each package with a console test, and check
                      its output (see [package.metadata.citronnade.test])
   3dsx <file.elf>    Convert an ELF into a .3dsx (with the default SMDH)
@@ -38,6 +44,10 @@ Options for run, link and test:
   -s, --server        (run, link) Show the program's output here until it exits
   -v, --verbose       (test) Show each program's output
   -- <args>...        Arguments for the program on the console
+
+Options for serve:
+  --port <n>          The HTTP port (default: 8000)
+  --address <ip>      This computer's address on the network (default: found)
 
 Options for new:
   --path <dir>        Depend on a local Citronnade checkout instead of git
@@ -129,6 +139,42 @@ fn run(args: Vec<String>) -> Result<(), String> {
         "build" => {
             let tc = Toolchain::find()?;
             building::build(&tc, "build", rest).map(|_| ())
+        }
+        "qr" => {
+            let text = rest.first().ok_or("qr needs the text to encode")?;
+            let code = qr::QrCode::encode(text.as_bytes()).ok_or("the text is too long for a QR code (213 bytes at most)")?;
+            print!("{}", code.to_terminal());
+            if let Some(i) = rest.iter().position(|a| a == "--svg") {
+                let path = rest.get(i + 1).ok_or("--svg needs a file")?;
+                std::fs::write(path, code.to_svg()).map_err(|e| format!("could not write {path}: {e}"))?;
+            }
+            Ok(())
+        }
+        "serve" => {
+            let mut port = 8000u16;
+            let mut address = None;
+            let mut cargo_args = vec!["--cia".to_string()];
+            let mut i = 0;
+            while i < rest.len() {
+                match rest[i].as_str() {
+                    "--port" => {
+                        let v = rest.get(i + 1).ok_or("--port needs a value")?;
+                        port = v.parse().map_err(|_| format!("`{v}` is not a port"))?;
+                        i += 1;
+                    }
+                    "--address" => {
+                        let v = rest.get(i + 1).ok_or("--address needs a value")?;
+                        address = Some(v.parse().map_err(|_| format!("`{v}` is not an IPv4 address"))?);
+                        i += 1;
+                    }
+                    other => cargo_args.push(other.to_string()),
+                }
+                i += 1;
+            }
+            let tc = Toolchain::find()?;
+            let built = building::build(&tc, "build", &cargo_args)?;
+            let cias: Vec<PathBuf> = built.iter().map(|b| b.dsx.with_extension("cia")).collect();
+            serve::serve(&cias, address, port)
         }
         "run" => {
             let (opts, cargo_args) = take_link_options(rest)?;

@@ -37,6 +37,13 @@ To install it on the HOME Menu instead, package it as a CIA too (see
 cargo citronnade build --release --cia
 ```
 
+or serve it to FBI over the network, with a QR code to scan (Remote
+Install > Scan QR Code):
+
+```bash
+cargo citronnade serve --release
+```
+
 A program looks like this:
 
 ```rust
