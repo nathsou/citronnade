@@ -51,6 +51,9 @@ impl System {
         APT_UP.store(true, Ordering::Release);
         // Make sure APT closes the application properly even if `Apt` leaks.
         citronnade_rt::at_exit(shutdown_apt);
+        // Output to the PC when started by `cargo citronnade run --server`
+        // or `test`.
+        crate::net::stdio::auto_connect();
         System { apt: Apt { _private: () }, gsp: Gsp { _private: () }, hid: Hid { _private: () } }
     }
 }

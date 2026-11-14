@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use core::fmt::{self, Write};
 
 use citronnade_rt::sync::Mutex as SpinLock;
-use citronnade_rt::{log, svc};
+use citronnade_rt::log;
 
 use crate::font::{CELL_HEIGHT, CELL_WIDTH};
 use crate::gfx::{Color, Screen, Screens};
@@ -206,18 +206,19 @@ impl Write for Printer {
         let mut guard = CONSOLE.lock();
         if let Some(state) = guard.as_mut() {
             state.write(s);
-            // Mirror complete lines to the debugger.
+            // Mirror complete lines to the debugger and the log sinks.
+            let mut lines = alloc::vec::Vec::new();
             for &b in s.as_bytes() {
                 if b == b'\n' {
-                    let line = core::mem::take(&mut state.line);
-                    svc::output_debug_string(if line.is_empty() { b" " } else { &line });
+                    lines.push(core::mem::take(&mut state.line));
                 } else {
                     state.line.push(b);
                 }
             }
-        } else {
             drop(guard);
-            let _ = log::LineWriter::new().write_str(s);
+            for line in lines {
+                log::emit_line(&alloc::string::String::from_utf8_lossy(&line));
+            }
         }
         Ok(())
     }
@@ -225,7 +226,13 @@ impl Write for Printer {
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments<'_>) {
-    let _ = Printer.write_fmt(args);
+    if CONSOLE.lock().is_some() {
+        let _ = Printer.write_fmt(args);
+    } else {
+        // One line buffer for the whole call: the formatting machinery
+        // writes a line in several pieces.
+        log::_log(args);
+    }
 }
 
 /// Prints to the console (or the log when there is none).

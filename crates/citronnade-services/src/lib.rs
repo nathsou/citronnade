@@ -8,16 +8,19 @@
 
 extern crate alloc;
 
+pub mod ac;
 pub mod apt;
 pub mod cfg;
 pub mod dsp;
 pub mod fs;
 pub mod gsp;
 pub mod hid;
+pub mod httpc;
 pub mod ipc;
 pub mod mic;
 pub mod irrst;
 pub mod ptm;
+pub mod soc;
 pub mod srv;
 
 pub use citronnade_rt::svc::{Handle, ResultCode};

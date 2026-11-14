@@ -12,11 +12,45 @@ use crate::json::{self, Value};
 /// What the SMDH and the 3DSX need to know about a package.
 #[derive(Debug, Clone, Default)]
 pub struct PackageInfo {
+    pub name: String,
     pub title: Option<String>,
     pub description: Option<String>,
     pub author: Option<String>,
     pub icon: Option<PathBuf>,
     pub romfs: Option<PathBuf>,
+    /// What `cargo citronnade test` checks in the program's output.
+    pub test: Option<TestSpec>,
+}
+
+/// A console test: lines the output must contain (in order) and must not
+/// contain, and how long the program may run.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TestSpec {
+    pub expect: Vec<String>,
+    pub reject: Vec<String>,
+    pub timeout_secs: u64,
+}
+
+/// `[package.metadata.citronnade.test]`, or else an emulator check that
+/// needs no input and exits by itself.
+fn test_spec(meta: Option<&Value>) -> Option<TestSpec> {
+    let strings = |v: Option<&Value>, key: &str| -> Vec<String> {
+        v.and_then(|t| t.get(key)).map(Value::as_array).unwrap_or(&[]).iter().filter_map(Value::as_str).map(String::from).collect()
+    };
+    let meta = meta?;
+    if let Some(t) = meta.get("test") {
+        let timeout = t.get("timeout").and_then(Value::as_f64).unwrap_or(30.0) as u64;
+        return Some(TestSpec { expect: strings(Some(t), "expect"), reject: strings(Some(t), "reject"), timeout_secs: timeout });
+    }
+    let emu = meta.get("emulator")?;
+    let interactive = !emu.get("input").map(Value::as_array).unwrap_or(&[]).is_empty();
+    let exits = emu.get("exits").and_then(Value::as_bool).unwrap_or(false);
+    let needs_host = emu.get("host_servers").is_some() || emu.get("sd_files").is_some();
+    if interactive || !exits || needs_host {
+        return None;
+    }
+    let frames = emu.get("frames").and_then(Value::as_f64).unwrap_or(600.0);
+    Some(TestSpec { expect: strings(Some(emu), "expect"), reject: strings(Some(emu), "reject"), timeout_secs: (frames / 60.0) as u64 + 20 })
 }
 
 /// Package ID -> metadata, from `cargo metadata`.
@@ -44,6 +78,8 @@ pub fn load(cargo: &Path) -> Result<HashMap<String, PackageInfo>, String> {
         map.insert(
             id,
             PackageInfo {
+                name: p.str("name").unwrap_or_default().to_string(),
+                test: test_spec(meta),
                 title: meta.and_then(|m| m.str("title")).map(String::from),
                 description: p.str("description").map(String::from),
                 author: meta.and_then(|m| m.str("author")).map(String::from).or(author),

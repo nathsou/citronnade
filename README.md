@@ -130,6 +130,10 @@ emulator's log.
 | 34 | [procedural-texture](examples/34-procedural-texture) | 0.7 | the procedural texture unit: rings, marble, bricks, clouds |
 | 35 | [stencil](examples/35-stencil) | 0.7 | stencil reflections and outlines |
 | 36 | [model](examples/36-model) | 0.7 | an original model converted at build time, loaded from the RomFS |
+| 37 | [wifi-status](examples/37-wifi-status) | 0.8 | the Wi-Fi connection, signal strength, the console's address |
+| 38 | [sockets](examples/38-sockets) | 0.8 | TCP echo and UDP with a PC, non-blocking sockets, broadcast |
+| 39 | [stdio](examples/39-stdio) | 0.8 | printing to the PC's terminal; the basis of `cargo citronnade test` |
+| 40 | [http](examples/40-http) | 0.8 | HTTP GET and POST through the system, a JSON response |
 
 Audio needs the console's DSP firmware, which is not distributed: dump your
 own with the DSP1 homebrew to `/3ds/dspfirm.cdc` on the SD card.
@@ -144,6 +148,20 @@ filtering only shows on hardware or with a hardware renderer.
 
 Host tests: `cargo test`. The examples run headless in Azahar's libretro
 core and check their own output: see [docs/emulator.md](docs/emulator.md).
+
+On a console, with the Homebrew Launcher's netloader open (Y):
+
+- `cargo citronnade run --server -p hello` sends the program and shows its
+  `println!` and `log!` output in the terminal until it exits;
+- `cargo citronnade test` builds the workspace's programs, sends each one
+  that has a console test and checks its output: the lines listed in
+  `[package.metadata.citronnade.test]` (`expect`, `reject`, `timeout` in
+  seconds), or, by default, the emulator check of examples that need no
+  input. Reopen the netloader between programs if your launcher version
+  does not return to it by itself.
+
+The network examples talk to `python3 tools/net/hostservers.py` on the PC;
+write the PC's address into `sd:/citronnade/net.txt`.
 
 ## License
 

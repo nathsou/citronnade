@@ -1,0 +1,25 @@
+[package]
+name = "http"
+description = "HTTP requests through the system: fetch a JSON document and a text file, and post data"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.8"
+title = "HTTP"
+covers = ["net::Http", "http:C", "GET and POST", "response headers"]
+
+[package.metadata.citronnade.emulator]
+frames = 120
+input = ["100-104:start"]
+expect = ["http: fetching http://127.0.0.1:7780/status.json", "http: 200 application/json", "lemons: eureka, lisbon, meyer", "post: 200", "bye"]
+reject = ["panicked", "failed"]
+exits = true
+shots = [60]
+host_servers = true
+sd_files = { "citronnade/net.txt" = "127.0.0.1" }
+
+[dependencies]
+citronnade.workspace = true

@@ -48,3 +48,18 @@ To run a program by hand:
 ```bash
 target/emu-run --frames 300 --press 60-70:a --shot 120:shot.ppm program.3dsx
 ```
+
+## Network examples
+
+`host_servers = true` in an example's emulator metadata starts the PC-side
+servers of `tools/net/hostservers.py` on 127.0.0.1 before the run (TCP echo
+on 7777, UDP echo on 7778, an output sink on 7779, HTTP on 7780). Azahar's
+socket and HTTP services use the host's network, so the program reaches
+them at 127.0.0.1 (the examples read the address from
+`sd:/citronnade/net.txt`, which `sd_files` provides). `host_expect` lists
+text the output sink must receive, in order, for examples that print to the
+PC.
+
+Azahar's sockets are the host's, so a blocking call stalls the emulated
+console until it returns; the examples use non-blocking sockets in their
+frame loops.

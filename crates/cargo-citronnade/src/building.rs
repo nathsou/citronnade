@@ -10,6 +10,8 @@ use crate::toolchain::Toolchain;
 
 pub struct Built {
     pub dsx: PathBuf,
+    /// The package's metadata.
+    pub info: PackageInfo,
 }
 
 /// Runs `cargo <subcommand>` for the 3DS with `args`, then packages every
@@ -58,7 +60,7 @@ pub fn build(tc: &Toolchain, subcommand: &str, args: &[String]) -> Result<Vec<Bu
             layout.bss.div_ceil(1024),
             layout.absolute_relocations + layout.relative_relocations
         );
-        built.push(Built { dsx });
+        built.push(Built { dsx, info: info.clone() });
     }
     Ok(built)
 }

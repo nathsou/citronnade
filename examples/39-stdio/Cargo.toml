@@ -1,0 +1,24 @@
+[package]
+name = "stdio"
+description = "Printing to the PC's terminal over the network, as cargo citronnade run --server and test use"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.8"
+title = "Stdio"
+covers = ["net::stdio", "3dslink's output channel", "println! and log! to the host"]
+
+[package.metadata.citronnade.emulator]
+frames = 90
+expect = ["stdio: output goes to 127.0.0.1:7779", "self-check: 6 of 6 passed"]
+reject = ["panicked", "FAILED"]
+exits = true
+host_servers = true
+sd_files = { "citronnade/net.txt" = "127.0.0.1" }
+host_expect = ["Hello from the 3DS!", "squares: 1 4 9 16 25", "self-check: 6 of 6 passed", "goodbye"]
+
+[dependencies]
+citronnade.workspace = true

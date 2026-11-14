@@ -1,8 +1,10 @@
 //! Command-line arguments passed by the loader.
 //!
 //! The Homebrew Launcher passes the path of the 3DSX as the first argument;
-//! 3dslink can pass more, and appends the host's address as the last one
-//! (`3dslink:/` followed by the address) when it wants output sent back.
+//! 3dslink can pass more. When a program arrives over 3dslink, the launcher
+//! also appends the sending PC's address as a last argument,
+//! `XXXXXXXX_3DSLINK_` (the address's `s_addr` in hex); like libctru, it is
+//! taken out of [`args`] and offered by [`link_host`].
 
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -10,6 +12,18 @@ use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 static DATA: AtomicPtr<&'static str> = AtomicPtr::new(core::ptr::null_mut());
 static COUNT: AtomicUsize = AtomicUsize::new(0);
+static LINK_HOST: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
+/// Decodes the launcher's `XXXXXXXX_3DSLINK_` argument.
+fn parse_link_host(arg: &str) -> Option<[u8; 4]> {
+    let b = arg.as_bytes();
+    if b.len() != 17 || &b[8..] != b"_3DSLINK_" {
+        return None;
+    }
+    // s_addr holds the address's bytes in network order; read as a
+    // little-endian number it prints reversed.
+    u32::from_str_radix(arg.get(..8)?, 16).ok().map(u32::to_le_bytes)
+}
 
 /// Copies the loader's argument list to the heap. Called once at startup.
 pub(crate) fn init() {
@@ -30,6 +44,12 @@ pub(crate) fn init() {
             args.push(core::str::from_utf8(bytes).unwrap_or(""));
             p = p.add(len + 1);
         }
+        if args.len() > 1 {
+            if let Some(ip) = args.last().and_then(|a| parse_link_host(a)) {
+                LINK_HOST.store(u32::from_le_bytes(ip), Ordering::Release);
+                args.pop();
+            }
+        }
         let args = Box::leak(args.into_boxed_slice());
         COUNT.store(args.len(), Ordering::Relaxed);
         DATA.store(args.as_mut_ptr(), Ordering::Release);
@@ -45,14 +65,19 @@ pub fn args() -> &'static [&'static str] {
     unsafe { core::slice::from_raw_parts(data, COUNT.load(Ordering::Relaxed)) }
 }
 
-/// The host address 3dslink appended, if any (`3dslink:/` + an IPv4 address
-/// as 8 hex digits, as the Homebrew Launcher passes it).
+/// The address of the PC that sent this program with 3dslink, if it did.
 pub fn link_host() -> Option<[u8; 4]> {
-    let last = *args().last()?;
-    let hex = last.strip_prefix("3dslink:/")?;
-    if hex.len() != 8 {
-        return None;
+    let v = LINK_HOST.load(Ordering::Acquire);
+    (v != 0).then(|| v.to_le_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn link_host_argument() {
+        // 192.168.1.20 has s_addr 0x1401A8C0 on a little-endian machine.
+        assert_eq!(super::parse_link_host("1401a8c0_3DSLINK_"), Some([192, 168, 1, 20]));
+        assert_eq!(super::parse_link_host("3dslink:/c0a80114"), None);
+        assert_eq!(super::parse_link_host("1401a8c0_3DSLINKX"), None);
     }
-    let v = u32::from_str_radix(hex, 16).ok()?;
-    Some(v.to_be_bytes())
 }

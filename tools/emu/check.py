@@ -12,6 +12,8 @@ Each example declares its check in Cargo.toml:
     sd_files = { "dir/file.txt" = "contents" }    # files put on the virtual SD card first
     audio_peak_min = 2000             # the program must make sound at least this loud
     input = ["10-20:a", "touch 30-40:160,120"]   # see tools/emu/run.c
+    host_servers = true               # start tools/net/hostservers.py's servers on 127.0.0.1
+    host_expect = ["hello"]           # text the stdio sink (TCP 7779) must receive, in order
 
 Usage: tools/emu/check.py [example-name ...] [--release] [--no-build]
 Needs target/emu-run (tools/emu/build.sh) and AZAHAR_LIBRETRO.
@@ -25,6 +27,22 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tools" / "net"))
+import hostservers  # noqa: E402
+
+_servers = None
+
+
+def start_host_servers():
+    """Starts the network examples' PC-side servers once."""
+    global _servers
+    if _servers is None:
+        hostservers.tcp_echo("127.0.0.1")
+        hostservers.udp_echo("127.0.0.1")
+        _, received = hostservers.tcp_sink("127.0.0.1")
+        hostservers.http_server("127.0.0.1")
+        _servers = received
+    return _servers
 EMU = ROOT / "target" / "emu-run"
 SHOTS = ROOT / "target" / "emu-shots"
 LOG_LINE = re.compile(r"Debug\.Emulated <Debug> [^:]+:OutputDebugString:\d+: (.*)$")
@@ -60,6 +78,10 @@ def run_example(name, meta, profile):
         target = sd / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content)
+    received = None
+    if check.get("host_servers"):
+        received = start_host_servers()
+        received.clear()
     cmd.append(str(program))
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     output = proc.stdout + proc.stderr
@@ -77,6 +99,16 @@ def run_example(name, meta, profile):
             problems.append(f"missing (in order): {want!r}")
         else:
             position = found + 1
+    if "host_expect" in check:
+        text = b"".join(received or []).decode("utf-8", "replace")
+        (ROOT / "target" / "emu-logs" / f"{name}.host.txt").write_text(text)
+        position = 0
+        for want in check["host_expect"]:
+            found = text.find(want, position)
+            if found < 0:
+                problems.append(f"the host did not receive (in order): {want!r}")
+            else:
+                position = found + len(want)
     for bad in check.get("reject", []):
         if any(bad in line for line in lines):
             problems.append(f"unexpected: {bad!r}")

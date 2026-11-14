@@ -1,6 +1,7 @@
 //! `cargo citronnade`: build, package and run Nintendo 3DS homebrew.
 
 mod building;
+mod console;
 mod icon;
 mod json;
 mod link;
@@ -24,13 +25,17 @@ Commands:
   build              Build for the 3DS and package each binary as a .3dsx
   run                Build, then send the .3dsx to the Homebrew Launcher (3dslink)
   link <file.3dsx>   Send an existing .3dsx to the Homebrew Launcher
+  test               Build, send each package with a console test, and check
+                     its output (see [package.metadata.citronnade.test])
   3dsx <file.elf>    Convert an ELF into a .3dsx (with the default SMDH)
   new <path>         Create a project
   <other>            Run any other cargo command (check, clippy, doc, ...) for the 3DS
 
-Options for run and link:
+Options for run, link and test:
   -a, --address <ip>  The console's address (default: discover it)
   -r, --retries <n>   Discovery attempts (default: 10)
+  -s, --server        (run, link) Show the program's output here until it exits
+  -v, --verbose       (test) Show each program's output
   -- <args>...        Arguments for the program on the console
 
 Options for new:
@@ -42,11 +47,13 @@ struct LinkOptions {
     address: Option<Ipv4Addr>,
     retries: u32,
     program_args: Vec<String>,
+    server: bool,
+    verbose: bool,
 }
 
 /// Splits our own options from cargo's.
 fn take_link_options(args: &[String]) -> Result<(LinkOptions, Vec<String>), String> {
-    let mut opts = LinkOptions { address: None, retries: 10, program_args: Vec::new() };
+    let mut opts = LinkOptions { address: None, retries: 10, program_args: Vec::new(), server: false, verbose: false };
     let mut rest = Vec::new();
     let mut i = 0;
     while i < args.len() {
@@ -61,6 +68,8 @@ fn take_link_options(args: &[String]) -> Result<(LinkOptions, Vec<String>), Stri
                 opts.retries = v.parse().map_err(|_| format!("`{v}` is not a number"))?;
                 i += 1;
             }
+            "-s" | "--server" => opts.server = true,
+            "-v" | "--verbose" => opts.verbose = true,
             "--" => {
                 opts.program_args = args[i + 1..].to_vec();
                 break;
@@ -72,12 +81,33 @@ fn take_link_options(args: &[String]) -> Result<(LinkOptions, Vec<String>), Stri
     Ok((opts, rest))
 }
 
+fn console_address(opts: &LinkOptions) -> Result<Ipv4Addr, String> {
+    match opts.address {
+        Some(a) => Ok(a),
+        None => link::discover(opts.retries),
+    }
+}
+
 fn send(opts: &LinkOptions, file: &Path) -> Result<(), String> {
-    let address = match opts.address {
-        Some(a) => a,
-        None => link::discover(opts.retries)?,
-    };
-    link::send(address, file, &opts.program_args)
+    let address = console_address(opts)?;
+    if !opts.server {
+        return link::send(address, file, &opts.program_args);
+    }
+    // Listen first, then send with the argument that makes the program
+    // connect back, then show its output until it exits.
+    let listener = console::listen()?;
+    let mut args = opts.program_args.clone();
+    args.push(console::STDIO_ARG.to_string());
+    link::send(address, file, &args)?;
+    eprintln!("     Waiting for the program's output (Ctrl-C stops)");
+    let (_, _) = console::collect(
+        &listener,
+        std::time::Duration::from_secs(30),
+        std::time::Duration::from_secs(u64::MAX / 4),
+        &mut std::io::stdout(),
+    )?;
+    eprintln!("     The program closed its output");
+    Ok(())
 }
 
 fn run(args: Vec<String>) -> Result<(), String> {
@@ -111,6 +141,27 @@ fn run(args: Vec<String>) -> Result<(), String> {
                     many.len()
                 )),
             }
+        }
+        "test" => {
+            let (opts, cargo_args) = take_link_options(rest)?;
+            let tc = Toolchain::find()?;
+            let built = building::build(&tc, "build", &cargo_args)?;
+            let address = console_address(&opts)?;
+            let sender = |file: &Path, args: &[String]| link::send(address, file, args);
+            let (mut passed, mut failed, mut skipped) = (0, 0, 0);
+            for b in &built {
+                let Some(spec) = &b.info.test else {
+                    skipped += 1;
+                    continue;
+                };
+                if console::run_test(&b.info.name, &b.dsx, spec, &sender, opts.verbose) {
+                    passed += 1;
+                } else {
+                    failed += 1;
+                }
+            }
+            println!("{passed} passed, {failed} failed, {skipped} without a console test");
+            if failed == 0 { Ok(()) } else { Err(format!("{failed} console test(s) failed")) }
         }
         "link" => {
             let (opts, files) = take_link_options(rest)?;

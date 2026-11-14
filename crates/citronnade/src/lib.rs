@@ -34,6 +34,7 @@ pub mod gpu;
 pub mod info;
 pub mod input;
 pub mod math;
+pub mod net;
 pub mod mic;
 mod panic_screen;
 pub mod romfs;

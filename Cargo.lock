@@ -141,6 +141,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "http"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "lifecycle"
 version = "0.1.0"
 dependencies = [
@@ -226,7 +233,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "sockets"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
 name = "sprites"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "stdio"
 version = "0.1.0"
 dependencies = [
  "citronnade",
@@ -319,6 +340,13 @@ dependencies = [
 
 [[package]]
 name = "wide-mode"
+version = "0.1.0"
+dependencies = [
+ "citronnade",
+]
+
+[[package]]
+name = "wifi-status"
 version = "0.1.0"
 dependencies = [
  "citronnade",

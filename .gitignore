@@ -7,3 +7,4 @@
 *.nes
 *.3ds
 *.cia
+__pycache__/

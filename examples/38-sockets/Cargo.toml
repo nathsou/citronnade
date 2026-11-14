@@ -1,0 +1,25 @@
+[package]
+name = "sockets"
+description = "TCP and UDP with a PC: an echo round trip, latency, and UDP broadcast discovery"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[package.metadata.citronnade]
+since = "0.8"
+title = "Sockets"
+covers = ["TcpStream", "UdpSocket", "non-blocking sockets", "poll", "SocketAddr"]
+
+[package.metadata.citronnade.emulator]
+frames = 150
+input = ["130-134:start"]
+expect = ["sockets: PC at 127.0.0.1", "tcp: connected", "tcp echo ok", "udp echo ok", "bye"]
+reject = ["panicked", "mismatch"]
+exits = true
+shots = [100]
+host_servers = true
+sd_files = { "citronnade/net.txt" = "127.0.0.1" }
+
+[dependencies]
+citronnade.workspace = true

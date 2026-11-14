@@ -33,6 +33,11 @@ pub fn remove_sink(sink: Sink) {
     }
 }
 
+/// Sends one line (without its newline) to the debugger and the sinks.
+pub fn emit_line(line: &str) {
+    emit(line)
+}
+
 fn emit(line: &str) {
     // A zero-length debug string is a host I/O request for debuggers.
     svc::output_debug_string(if line.is_empty() { b" " } else { line.as_bytes() });
