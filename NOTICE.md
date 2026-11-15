@@ -26,7 +26,9 @@ original licences ask for this acknowledgement:
   TMD and CIA layouts that `citronnade-formats` writes (`ncch.rs`,
   `cia.rs`), and the CIA certificate chain (`cia_certificates.bin`: the
   retail CA00000003, XS0000000c and CP0000000b certificates, which are
-  public and which every CIA carries; no key of any kind is included).
+  public and which every CIA carries; no key of any kind is included), and
+  the homebrew splash logo every NCCH carries (`ncch_logo.bin`, makerom's
+  `Logo: Homebrew`).
 - **buildtools** (<https://github.com/Steveice10/buildtools>), MIT
   licence, copyright Steveice10: the access control that `ncch.rs` gives a
   title (its system calls, services, dependencies and flags) is that of its

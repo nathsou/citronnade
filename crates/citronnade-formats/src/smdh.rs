@@ -65,8 +65,9 @@ impl Smdh<'_> {
     }
 }
 
-/// The default flags for homebrew: visible, usage recorded, ratings used.
-pub const DEFAULT_FLAGS: u32 = FLAG_VISIBLE | FLAG_RECORD_USAGE | FLAG_REGION_RATING_USED;
+/// The default flags for homebrew: visible, stereoscopic 3D allowed (an
+/// installed title gets 3D only with it), usage recorded, ratings used.
+pub const DEFAULT_FLAGS: u32 = FLAG_VISIBLE | FLAG_USE_3D | FLAG_RECORD_USAGE | FLAG_REGION_RATING_USED;
 
 fn write_utf16(dst: &mut [u8], s: &str) {
     let max = dst.len() / 2 - 1; // keep a terminating NUL

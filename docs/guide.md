@@ -297,8 +297,9 @@ new3ds_memory = "124MB"        # "legacy" (default), "124MB" or "178MB"
 ```
 
 `cargo citronnade serve` sends a title to a console without copying files
-(see [the tool](#the-tool)). The title version comes from the package's version. Without a banner the
-HOME Menu shows the title with its icon only. Nothing is signed, so
+(see [the tool](#the-tool)). The title version comes from the package's version. The HOME Menu shows
+the homebrew splash logo while it starts the title. Without a banner it
+shows the title with its icon only. Nothing is signed, so
 consoles install these titles with signature checks patched, as custom
 firmware such as Luma3DS does; give each program its own `unique_id` so
 titles do not replace each other.

@@ -3,7 +3,8 @@
 //!
 //! An NCCH is a 0x200-byte header, the extended header (what the program
 //! is: its code segments, the system modules it needs, and what it may do,
-//! twice: as asked and as allowed, the access descriptor), the ExeFS (the
+//! twice: as asked and as allowed, the access descriptor), the logo (the
+//! splash the HOME Menu shows while starting the title), the ExeFS (the
 //! code, the SMDH icon and optionally a banner) and optionally a RomFS
 //! wrapped in an IVFC hash tree. Offsets and sizes count 0x200-byte media
 //! units; the header holds SHA-256 hashes of the extended header and of the
@@ -31,6 +32,11 @@ const PAGE: u32 = 0x1000;
 const IVFC_BLOCK: usize = 0x1000;
 /// The size of the IVFC header.
 const IVFC_HEADER: usize = 0x5C;
+
+/// The splash the HOME Menu shows while it starts the title: the homebrew
+/// logo (an LZ11-compressed darc of images), as makerom's `Logo: Homebrew`
+/// (the usual homebrew template's) includes it.
+const LOGO: &[u8; 0x2000] = include_bytes!("ncch_logo.bin");
 
 /// The kernel's CoreVersion the access control targets.
 pub const CORE_VERSION: u32 = 2;
@@ -398,7 +404,8 @@ pub fn build(p: &Program<'_>) -> Result<Vec<u8>, NcchError> {
 
     // the layout, in media units
     let exheader_at = 0x200;
-    let exefs_at = align(exheader_at + 0x800, MEDIA_UNIT);
+    let logo_at = align(exheader_at + 0x800, MEDIA_UNIT);
+    let exefs_at = align(logo_at + LOGO.len(), MEDIA_UNIT);
     let romfs_at = align(exefs_at + exefs.len(), 0x1000);
     let size = match &romfs {
         Some((image, _)) => align(romfs_at + image.len(), MEDIA_UNIT),
@@ -407,6 +414,7 @@ pub fn build(p: &Program<'_>) -> Result<Vec<u8>, NcchError> {
     let mut out = vec![0u8; size];
     out[exheader_at..exheader_at + 0x400].copy_from_slice(&exheader);
     out[exheader_at + 0x400..exheader_at + 0x800].copy_from_slice(&access_descriptor);
+    out[logo_at..logo_at + LOGO.len()].copy_from_slice(LOGO);
     out[exefs_at..exefs_at + exefs.len()].copy_from_slice(&exefs);
 
     let units = |bytes: usize| (bytes / MEDIA_UNIT) as u32;
@@ -418,6 +426,7 @@ pub fn build(p: &Program<'_>) -> Result<Vec<u8>, NcchError> {
     h[0x110..0x112].copy_from_slice(b"00");
     h[0x112..0x114].copy_from_slice(&2u16.to_le_bytes());
     put64(h, 0x118, p.title_id);
+    h[0x130..0x150].copy_from_slice(&sha256(LOGO));
     put_str(h, 0x150, 16, p.product_code, "product code")?;
     h[0x160..0x180].copy_from_slice(&sha256(&exheader));
     put32(h, 0x180, 0x400);
@@ -427,6 +436,8 @@ pub fn build(p: &Program<'_>) -> Result<Vec<u8>, NcchError> {
     h[0x188 + 5] = if has_romfs { 3 } else { 2 };
     h[0x188 + 6] = 0;
     h[0x188 + 7] = 0b101 | if has_romfs { 0 } else { 0b010 };
+    put32(h, 0x198, units(logo_at));
+    put32(h, 0x19C, units(LOGO.len()));
     put32(h, 0x1A0, units(exefs_at));
     put32(h, 0x1A4, units(exefs.len()));
     put32(h, 0x1A8, 1);
