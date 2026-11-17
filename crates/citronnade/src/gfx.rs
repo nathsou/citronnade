@@ -898,6 +898,17 @@ impl Screens {
         }
     }
 
+    /// The buffer a screen shows now (the last presented): address, width
+    /// (in its sideways layout, 240 pixels a column) and format. For
+    /// screenshots; the GPU may have written it, so invalidate the cache
+    /// before reading.
+    pub fn front_buffer(&self, screen: Screen) -> (*const u8, u32, Format) {
+        match screen {
+            Screen::Top => (self.top.ptrs[self.top.shown].as_ptr(), self.top_width(), self.top.format),
+            Screen::Bottom => (self.bottom.ptrs[self.bottom.shown].as_ptr(), 320, self.bottom.format),
+        }
+    }
+
     /// The bottom screen's framebuffers, for the panic screen.
     pub(crate) fn bottom_buffers(&self) -> ([usize; 2], Format, usize) {
         ([self.bottom.ptrs[0].as_ptr() as usize, self.bottom.ptrs[1].as_ptr() as usize], self.bottom.format, self.bottom.shown)
