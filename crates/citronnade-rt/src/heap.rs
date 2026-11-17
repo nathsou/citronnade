@@ -304,14 +304,20 @@ pub(crate) unsafe fn init(requested: HeapSizes, stack_size: u32) -> (u32, u32) {
         app = area;
     }
 
-    let app_base = unsafe {
-        svc::control_memory(svc::memop::ALLOC, HEAP_AREA_BEGIN, 0, app, svc::perm::READ_WRITE)
-    }
-    .unwrap_or_else(|_| svc::break_(svc::break_reason::PANIC));
-    let linear_base = unsafe {
-        svc::control_memory(svc::memop::ALLOC_LINEAR, 0, 0, linear, svc::perm::READ_WRITE)
-    }
-    .unwrap_or_else(|_| svc::break_(svc::break_reason::PANIC));
+    // A program started again right after it ended (an application jump to
+    // itself) may find its last run's memory not all given back yet, though
+    // the resource limit counts it free: wait for it, up to 5 seconds.
+    let retry = |f: &dyn Fn() -> Result<u32, svc::ResultCode>| -> u32 {
+        for _ in 0..50 {
+            if let Ok(base) = f() {
+                return base;
+            }
+            svc::sleep_thread(100_000_000);
+        }
+        svc::break_(svc::break_reason::PANIC)
+    };
+    let app_base = retry(&|| unsafe { svc::control_memory(svc::memop::ALLOC, HEAP_AREA_BEGIN, 0, app, svc::perm::READ_WRITE) });
+    let linear_base = retry(&|| unsafe { svc::control_memory(svc::memop::ALLOC_LINEAR, 0, 0, linear, svc::perm::READ_WRITE) });
 
     APP_BASE.store(app_base as usize, Ordering::Relaxed);
     APP_SIZE.store(app as usize, Ordering::Relaxed);
