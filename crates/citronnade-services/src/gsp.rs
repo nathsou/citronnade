@@ -279,6 +279,17 @@ pub fn write_hw_regs(addr: u32, data: &[u32]) -> Result<()> {
     call(Request::new(0x1).word(addr).word(bytes as u32).static_buffer(data.as_ptr().cast(), bytes, 0)).map(|_| ())
 }
 
+/// Reads GPU registers (`addr` is relative to 0x1EB00000) into `out`, 0x80
+/// bytes per request (the most GSP sends at once).
+pub fn read_hw_regs(addr: u32, out: &mut [u8]) -> Result<()> {
+    for (i, chunk) in out.chunks_mut(0x80).enumerate() {
+        let len = chunk.len();
+        let request = Request::new(0x4).word(addr + (i * 0x80) as u32).word(len as u32);
+        unsafe { request.send_receiving(session(), &mut [(chunk.as_mut_ptr(), len)]) }?;
+    }
+    Ok(())
+}
+
 pub fn write_hw_regs_with_mask(addr: u32, data: &[u32], mask: &[u32]) -> Result<()> {
     let bytes = data.len() * 4;
     call(
