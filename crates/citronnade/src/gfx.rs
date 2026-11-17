@@ -855,7 +855,17 @@ impl Screens {
     /// Shows what was drawn into the back buffers at the next VBlank, waits
     /// for it, and makes the other buffers the back buffers.
     pub fn present(&mut self) {
-        crate::console::render_into(self);
+        self.present_with(true, true);
+    }
+
+    /// [`Screens::present`], drawing the console into the bottom screen
+    /// only with `console`, and waiting for the VBlank only with `wait`:
+    /// without, the swap still happens at the next VBlank, and drawing into
+    /// the new back buffers before it would show on screen.
+    pub fn present_with(&mut self, console: bool, wait: bool) {
+        if console {
+            crate::console::render_into(self);
+        }
         let back = self.top.shown ^ 1;
         let top_bytes = 240 * self.top_width() as usize * self.top.format.bytes_per_pixel()
             * if self.top_mode == TopMode::Stereo { 2 } else { 1 };
@@ -865,7 +875,9 @@ impl Screens {
         self.top.shown = back;
         self.bottom.shown = back;
         self.frames += 1;
-        gsp::wait_for_vblank();
+        if wait {
+            gsp::wait_for_vblank();
+        }
         crate::panic_screen::update(self);
     }
 
